@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hero Animation - Interactive Particle System</title>
+  
+  <!-- Tweakpane CSS (v3 for script-tag compatibility) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tweakpane@3.1.6/dist/tweakpane.min.css">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #000;
+      overflow: hidden;
+      cursor: none;
+    }
+
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Hide default cursor */
+    body, canvas {
+      cursor: none;
+    }
+
+    /* Custom cursor dot */
+    .cursor-dot {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s ease;
+    }
+
+    /* Tweakpane positioning */
+    .tp-dfwv {
+      width: 300px !important;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <!-- Tweakpane JS (v3 for script-tag compatibility) -->
+  <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.6/dist/tweakpane.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // HERO ANIMATION - INTERACTIVE PARTICLE SYSTEM
+    // ============================================
+    // This creates an interactive particle system that reacts to cursor movement.
+    // All parameters are controllable via Tweakpane for easy customization.
+    // Copy this entire file and integrate into your portfolio site.
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const cursorDot = document.getElementById('cursorDot');
+
+    // Set canvas size
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Mouse position
+    let mouseX = canvas.width / 2;
+    let mouseY = canvas.height / 2;
+    let targetMouseX = mouseX;
+    let targetMouseY = mouseY;
+
+    // Track mouse movement
+    document.addEventListener('mousemove', (e) => {
+      targetMouseX = e.clientX;
+      targetMouseY = e.clientY;
+      cursorDot.style.left = e.clientX + 'px';
+      cursorDot.style.top = e.clientY + 'px';
+    });
+
+    // Smooth mouse tracking
+    function updateMouse() {
+      mouseX += (targetMouseX - mouseX) * 0.1;
+      mouseY += (targetMouseY - mouseY) * 0.1;
+    }
+
+    // Particle class
+    class Particle {
+      constructor(x, y) {
+        this.baseX = x;
+        this.baseY = y;
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 2 + 1;
+        this.baseSize = this.size;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.opacity = Math.random() * 0.5 + 0.2;
+        this.baseOpacity = this.opacity;
+        this.hue = Math.random() * 60; // Base hue for color variation
+      }
+
+      update(params) {
+        const dx = mouseX - this.x;
+        const dy = mouseY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const maxDistance = params.interactionRadius;
+
+        // Calculate interaction strength
+        let interactionStrength = 0;
+        if (distance < maxDistance) {
+          interactionStrength = 1 - (distance / maxDistance);
+          interactionStrength = Math.pow(interactionStrength, params.interactionFalloff);
+        }
+
+        // Apply interaction based on type
+        if (params.interactionType === 'attract') {
+          // Attract particles to cursor
+          const force = interactionStrength * params.interactionStrength * 0.1;
+          if (distance > 0) {
+            this.x += (dx / distance) * force;
+            this.y += (dy / distance) * force;
+          }
+        } else if (params.interactionType === 'repel') {
+          // Repel particles from cursor
+          const force = interactionStrength * params.interactionStrength * 0.1;
+          if (distance > 0) {
+            this.x -= (dx / distance) * force;
+            this.y -= (dy / distance) * force;
+          }
+        } else if (params.interactionType === 'orbit') {
+          // Orbit around cursor
+          if (distance > 0) {
+            const angle = Math.atan2(dy, dx) + 0.1 * interactionStrength;
+            const radius = distance * (1 - interactionStrength * 0.3);
+            this.x = mouseX + Math.cos(angle) * radius;
+            this.y = mouseY + Math.sin(angle) * radius;
+          }
+        }
+        
+        // Clustering behavior (will be applied in main loop)
+
+        // Apply velocity and damping
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= params.damping;
+        this.vy *= params.damping;
+
+        // Return to base position
+        const returnForce = params.returnStrength * 0.01;
+        this.x += (this.baseX - this.x) * returnForce;
+        this.y += (this.baseY - this.y) * returnForce;
+
+        // Boundary wrapping
+        if (params.wrapEdges) {
+          if (this.x < 0) this.x = canvas.width;
+          if (this.x > canvas.width) this.x = 0;
+          if (this.y < 0) this.y = canvas.height;
+          if (this.y > canvas.height) this.y = 0;
+        } else {
+          // Bounce off edges
+          if (this.x < 0 || this.x > canvas.width) this.vx *= -0.8;
+          if (this.y < 0 || this.y > canvas.height) this.vy *= -0.8;
+          this.x = Math.max(0, Math.min(canvas.width, this.x));
+          this.y = Math.max(0, Math.min(canvas.height, this.y));
+        }
+
+        // Update size based on interaction
+        if (params.sizeReaction) {
+          this.size = this.baseSize + (interactionStrength * params.sizeReactionStrength * 3);
+        } else {
+          this.size = this.baseSize;
+        }
+
+        // Update opacity based on interaction
+        if (params.opacityReaction) {
+          this.opacity = this.baseOpacity + (interactionStrength * params.opacityReactionStrength);
+          this.opacity = Math.min(1, Math.max(0, this.opacity));
+        } else {
+          this.opacity = this.baseOpacity;
+        }
+      }
+
+      draw(params) {
+        ctx.save();
+        ctx.globalAlpha = this.opacity * params.globalOpacity;
+        
+        if (params.particleShape === 'circle') {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = params.particleColor;
+          ctx.fill();
+        } else if (params.particleShape === 'square') {
+          ctx.fillStyle = params.particleColor;
+          ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+        } else if (params.particleShape === 'glow') {
+          // Glowing dot effect
+          const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+          gradient.addColorStop(0, params.particleColor);
+          gradient.addColorStop(0.5, params.particleColor.replace('1)', '0.5)'));
+          gradient.addColorStop(1, params.particleColor.replace('1)', '0)'));
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Add color variation if enabled
+        if (params.colorVariation > 0) {
+          ctx.fillStyle = `hsla(${params.baseHue + this.hue * params.colorVariation}, ${params.saturation}%, ${params.lightness}%, ${this.opacity * params.globalOpacity})`;
+          if (params.particleShape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (params.particleShape === 'square') {
+            ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // Initialize particles
+    let particles = [];
+    function initParticles(params) {
+      particles = [];
+      const spacing = canvas.width / params.gridDensity;
+      const rows = Math.ceil(canvas.height / spacing);
+      const cols = Math.ceil(canvas.width / spacing);
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const px = (x + 0.5) * spacing;
+          const py = (y + 0.5) * spacing;
+          particles.push(new Particle(px, py));
+        }
+      }
+    }
+
+    // Default parameters
+    const params = {
+      // Grid settings
+      gridDensity: 30,
+      
+      // Particle appearance
+      particleShape: 'circle',
+      particleColor: 'rgba(255, 255, 255, 1)',
+      baseHue: 0,
+      saturation: 100,
+      lightness: 100,
+      colorVariation: 0,
+      globalOpacity: 1,
+      
+      // Interaction settings
+      interactionType: 'repel',
+      interactionRadius: 150,
+      interactionStrength: 50,
+      interactionFalloff: 2,
+      sizeReaction: true,
+      sizeReactionStrength: 1,
+      opacityReaction: true,
+      opacityReactionStrength: 0.5,
+      
+      // Physics
+      damping: 0.95,
+      returnStrength: 5,
+      wrapEdges: false,
+      
+      // Background
+      backgroundColor: '#000000',
+      showGradient: true,
+      gradientTop: '#000000',
+      gradientBottom: '#000000',
+      
+      // Grid overlay
+      showGrid: true,
+      gridColor: 'rgba(255, 255, 255, 0.05)',
+      gridSize: 50,
+      
+      // Connections
+      showConnections: false,
+      connectionDistance: 100,
+      connectionOpacity: 0.2,
+      connectionColor: 'rgba(255, 255, 255, 1)',
+      
+      // Clustering
+      enableClustering: false,
+      clusterStrength: 0.5,
+      clusterRadius: 80,
+      
+      // Animation
+      animationSpeed: 1,
+    };
+
+    // Initialize particles
+    initParticles(params);
+
+    // Setup Tweakpane
+    const pane = new Tweakpane.Pane({
+      title: 'Hero Animation Controls',
+      expanded: true,
+    });
+
+    // Grid folder
+    const gridFolder = pane.addFolder({ title: 'Grid', expanded: false });
+    gridFolder.addInput(params, 'gridDensity', { min: 10, max: 100, step: 1 })
+      .on('change', () => initParticles(params));
+
+    // Particle appearance folder
+    const appearanceFolder = pane.addFolder({ title: 'Particle Appearance', expanded: true });
+    appearanceFolder.addInput(params, 'particleShape', {
+      options: {
+        'Circle': 'circle',
+        'Square': 'square',
+        'Glow': 'glow',
+      }
+    });
+    appearanceFolder.addInput(params, 'particleColor', { view: 'color' });
+    appearanceFolder.addInput(params, 'globalOpacity', { min: 0, max: 1, step: 0.01 });
+    
+    const colorFolder = appearanceFolder.addFolder({ title: 'Color Variation', expanded: false });
+    colorFolder.addInput(params, 'colorVariation', { min: 0, max: 360, step: 1 });
+    colorFolder.addInput(params, 'baseHue', { min: 0, max: 360, step: 1 });
+    colorFolder.addInput(params, 'saturation', { min: 0, max: 100, step: 1 });
+    colorFolder.addInput(params, 'lightness', { min: 0, max: 100, step: 1 });
+
+    // Interaction folder
+    const interactionFolder = pane.addFolder({ title: 'Cursor Interaction', expanded: true });
+    interactionFolder.addInput(params, 'interactionType', {
+      options: {
+        'Repel': 'repel',
+        'Attract': 'attract',
+        'Orbit': 'orbit',
+      }
+    });
+    interactionFolder.addInput(params, 'interactionRadius', { min: 50, max: 500, step: 10 });
+    interactionFolder.addInput(params, 'interactionStrength', { min: 0, max: 100, step: 1 });
+    interactionFolder.addInput(params, 'interactionFalloff', { min: 1, max: 5, step: 0.1 });
+    
+    const reactionFolder = interactionFolder.addFolder({ title: 'Visual Reactions', expanded: false });
+    reactionFolder.addInput(params, 'sizeReaction');
+    reactionFolder.addInput(params, 'sizeReactionStrength', { min: 0, max: 3, step: 0.1 });
+    reactionFolder.addInput(params, 'opacityReaction');
+    reactionFolder.addInput(params, 'opacityReactionStrength', { min: 0, max: 1, step: 0.01 });
+
+    // Physics folder
+    const physicsFolder = pane.addFolder({ title: 'Physics', expanded: false });
+    physicsFolder.addInput(params, 'damping', { min: 0.8, max: 1, step: 0.01 });
+    physicsFolder.addInput(params, 'returnStrength', { min: 0, max: 20, step: 0.1 });
+    physicsFolder.addInput(params, 'wrapEdges');
+
+      // Background folder
+      const bgFolder = pane.addFolder({ title: 'Background', expanded: false });
+      bgFolder.addInput(params, 'backgroundColor', { view: 'color' });
+      bgFolder.addInput(params, 'showGradient');
+      bgFolder.addInput(params, 'gradientTop', { view: 'color' });
+      bgFolder.addInput(params, 'gradientBottom', { view: 'color' });
+      
+      // Grid overlay folder
+      const gridOverlayFolder = pane.addFolder({ title: 'Grid Overlay', expanded: false });
+      gridOverlayFolder.addInput(params, 'showGrid');
+      gridOverlayFolder.addInput(params, 'gridColor', { view: 'color' });
+      gridOverlayFolder.addInput(params, 'gridSize', { min: 20, max: 200, step: 5 });
+      
+      // Connections folder
+      const connectionsFolder = pane.addFolder({ title: 'Connections', expanded: false });
+      connectionsFolder.addInput(params, 'showConnections');
+      connectionsFolder.addInput(params, 'connectionDistance', { min: 50, max: 300, step: 10 });
+      connectionsFolder.addInput(params, 'connectionOpacity', { min: 0, max: 1, step: 0.01 });
+      connectionsFolder.addInput(params, 'connectionColor', { view: 'color' });
+      
+      // Clustering folder
+      const clusteringFolder = pane.addFolder({ title: 'Clustering', expanded: false });
+      clusteringFolder.addInput(params, 'enableClustering');
+      clusteringFolder.addInput(params, 'clusterStrength', { min: 0, max: 2, step: 0.1 });
+      clusteringFolder.addInput(params, 'clusterRadius', { min: 30, max: 200, step: 10 });
+
+    // Animation folder
+    const animFolder = pane.addFolder({ title: 'Animation', expanded: false });
+    animFolder.addInput(params, 'animationSpeed', { min: 0, max: 2, step: 0.1 });
+
+    // Export code button
+    pane.addButton({ title: 'Copy Code' }).on('click', () => {
+      const code = generateCodeOutput();
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Code copied to clipboard! Paste it into your site.');
+      });
+    });
+
+    // Generate code output function
+    function generateCodeOutput() {
+      const script = getAnimationScript();
+      return `<!-- Hero Animation Section -->
+<!-- Add this to your HTML where you want the hero animation -->
+<div id="hero-animation-container" style="position: relative; width: 100%; height: 100vh; overflow: hidden;">
+  <canvas id="hero-canvas" style="display: block; width: 100%; height: 100%;"></canvas>
+</div>
+
+<!-- Add this script before closing </body> tag -->
+<script>
+${script}
+</script>
+
+<!-- Add these styles to your CSS -->
+<style>
+  #hero-animation-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  #hero-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>`;
+    }
+
+    function getAnimationScript() {
+      // Build interaction code
+      let interactionCode = '';
+      if (params.interactionType === 'attract') {
+        interactionCode = `      const force = interactionStrength * ${params.interactionStrength} * 0.1;
+      if (distance > 0) {
+        this.x += (dx / distance) * force;
+        this.y += (dy / distance) * force;
+      }`;
+      } else if (params.interactionType === 'repel') {
+        interactionCode = `      const force = interactionStrength * ${params.interactionStrength} * 0.1;
+      if (distance > 0) {
+        this.x -= (dx / distance) * force;
+        this.y -= (dy / distance) * force;
+      }`;
+      } else if (params.interactionType === 'orbit') {
+        interactionCode = `      if (distance > 0) {
+        const angle = Math.atan2(dy, dx) + 0.1 * interactionStrength;
+        const radius = distance * (1 - interactionStrength * 0.3);
+        this.x = mouseX + Math.cos(angle) * radius;
+        this.y = mouseY + Math.sin(angle) * radius;
+      }`;
+      }
+
+      // Build boundary code
+      let boundaryCode = '';
+      if (params.wrapEdges) {
+        boundaryCode = `      if (this.x < 0) this.x = canvas.width;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.y < 0) this.y = canvas.height;
+      if (this.y > canvas.height) this.y = 0;`;
+      } else {
+        boundaryCode = `      if (this.x < 0 || this.x > canvas.width) this.vx *= -0.8;
+      if (this.y < 0 || this.y > canvas.height) this.vy *= -0.8;
+      this.x = Math.max(0, Math.min(canvas.width, this.x));
+      this.y = Math.max(0, Math.min(canvas.height, this.y));`;
+      }
+
+      // Build size reaction code
+      let sizeCode = params.sizeReaction 
+        ? `      this.size = this.baseSize + (interactionStrength * ${params.sizeReactionStrength} * 3);`
+        : `      this.size = this.baseSize;`;
+
+      // Build opacity reaction code
+      let opacityCode = params.opacityReaction
+        ? `      this.opacity = Math.min(1, Math.max(0, this.baseOpacity + (interactionStrength * ${params.opacityReactionStrength})));`
+        : `      this.opacity = this.baseOpacity;`;
+
+      // Build draw code
+      let drawCode = '';
+      
+      if (params.colorVariation > 0) {
+        // Use HSL color with variation
+        const baseHue = params.baseHue;
+        const saturation = params.saturation;
+        const lightness = params.lightness;
+        const globalOpacity = params.globalOpacity;
+        
+        if (params.particleShape === 'circle') {
+          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`;
+      ctx.fill();`;
+        } else if (params.particleShape === 'square') {
+          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
+      ctx.fillStyle = \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`;
+      ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);`;
+        } else if (params.particleShape === 'glow') {
+          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
+      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+      gradient.addColorStop(0, \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`);
+      gradient.addColorStop(0.5, \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity} * 0.5})\`);
+      gradient.addColorStop(1, \`hsla(\${hue}, ${saturation}%, ${lightness}%, 0)\`);
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+      ctx.fill();`;
+        }
+      } else {
+        // Use fixed color
+        const colorStr = params.particleColor.replace(/'/g, "\\'");
+        if (params.particleShape === 'circle') {
+          drawCode = `      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = '${colorStr}';
+      ctx.fill();`;
+        } else if (params.particleShape === 'square') {
+          drawCode = `      ctx.fillStyle = '${colorStr}';
+      ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);`;
+        } else if (params.particleShape === 'glow') {
+          const color1 = colorStr;
+          const color2 = colorStr.replace(/1\)/, '0.5)');
+          const color3 = colorStr.replace(/1\)/, '0)');
+          drawCode = `      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+      gradient.addColorStop(0, '${color1}');
+      gradient.addColorStop(0.5, '${color2}');
+      gradient.addColorStop(1, '${color3}');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+      ctx.fill();`;
+        }
+      }
+
+      // Build clustering code (applied in main loop, not in particle update)
+      let clusteringCode = '';
+      if (params.enableClustering) {
+        clusteringCode = `
+    // Apply clustering after all particles are updated
+    particles.forEach(particle => {
+      particles.forEach(other => {
+        if (other === particle) return;
+        const odx = other.x - particle.x;
+        const ody = other.y - particle.y;
+        const odistance = Math.sqrt(odx * odx + ody * ody);
+        
+        if (odistance < ${params.clusterRadius} && odistance > 0) {
+          const clusterForce = (1 - odistance / ${params.clusterRadius}) * ${params.clusterStrength} * 0.05;
+          particle.x += (odx / odistance) * clusterForce;
+          particle.y += (ody / odistance) * clusterForce;
+        }
+      });
+    });`;
+      }
+
+      // Build gradient code
+      let gradientCode = '';
+      if (params.showGradient) {
+        gradientCode = `    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '${params.gradientTop}');
+    gradient.addColorStop(1, '${params.gradientBottom}');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);`;
+      }
+      
+      // Build grid drawing code
+      let gridCode = '';
+      if (params.showGrid) {
+        gridCode = `
+  function drawGrid() {
+    ctx.strokeStyle = '${params.gridColor}';
+    ctx.lineWidth = 1;
+    
+    const gridSize = ${params.gridSize};
+    const offsetX = (mouseX % gridSize) - gridSize;
+    const offsetY = (mouseY % gridSize) - gridSize;
+    
+    // Vertical lines
+    for (let x = offsetX; x < canvas.width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    
+    // Horizontal lines
+    for (let y = offsetY; y < canvas.height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+  }`;
+      }
+      
+      // Build connection drawing code
+      let connectionCode = '';
+      if (params.showConnections) {
+        connectionCode = `
+  function drawConnections() {
+    ctx.strokeStyle = '${params.connectionColor}';
+    
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const p1 = particles[i];
+        const p2 = particles[j];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < ${params.connectionDistance}) {
+          const opacity = (1 - distance / ${params.connectionDistance}) * ${params.connectionOpacity} * p1.opacity * p2.opacity;
+          ctx.globalAlpha = opacity;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+      }
+    }
+    
+    ctx.globalAlpha = 1;
+  }`;
+      }
+
+      return `// Hero Animation Script
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  function resizeCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  
+  let mouseX = canvas.width / 2;
+  let mouseY = canvas.height / 2;
+  let targetMouseX = mouseX;
+  let targetMouseY = mouseY;
+  
+  document.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    targetMouseX = e.clientX - rect.left;
+    targetMouseY = e.clientY - rect.top;
+  });
+  
+  function updateMouse() {
+    mouseX += (targetMouseX - mouseX) * 0.1;
+    mouseY += (targetMouseY - mouseY) * 0.1;
+  }
+  
+  class Particle {
+    constructor(x, y) {
+      this.baseX = x;
+      this.baseY = y;
+      this.x = x;
+      this.y = y;
+      this.size = Math.random() * 2 + 1;
+      this.baseSize = this.size;
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = (Math.random() - 0.5) * 0.5;
+      this.opacity = Math.random() * 0.5 + 0.2;
+      this.baseOpacity = this.opacity;
+    }
+    
+    update() {
+      const dx = mouseX - this.x;
+      const dy = mouseY - this.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxDistance = ${params.interactionRadius};
+      
+      let interactionStrength = 0;
+      if (distance < maxDistance) {
+        interactionStrength = 1 - (distance / maxDistance);
+        interactionStrength = Math.pow(interactionStrength, ${params.interactionFalloff});
+      }
+      
+${interactionCode}
+      
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vx *= ${params.damping};
+      this.vy *= ${params.damping};
+      
+      const returnForce = ${params.returnStrength} * 0.01;
+      this.x += (this.baseX - this.x) * returnForce;
+      this.y += (this.baseY - this.y) * returnForce;
+      
+${boundaryCode}
+      
+${sizeCode}
+${opacityCode}
+    }
+    
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = this.opacity * ${params.globalOpacity};
+${drawCode}
+      ctx.restore();
+    }
+  }
+  
+  let particles = [];
+  function initParticles() {
+    particles = [];
+    const spacing = canvas.width / ${params.gridDensity};
+    const rows = Math.ceil(canvas.height / spacing);
+    const cols = Math.ceil(canvas.width / spacing);
+    
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        particles.push(new Particle((x + 0.5) * spacing, (y + 0.5) * spacing));
+      }
+    }
+  }
+  
+  initParticles();
+  
+${gridCode}${connectionCode}
+  
+  function animate() {
+    updateMouse();
+    
+    ctx.fillStyle = '${params.backgroundColor}';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+${gradientCode}
+    
+${params.showGrid ? '    drawGrid();' : ''}
+    
+    particles.forEach(p => {
+      p.update();
+    });
+    
+${clusteringCode}
+    
+${params.showConnections ? '    drawConnections();' : ''}
+    
+    particles.forEach(p => {
+      p.draw();
+    });
+    
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+})();`;
+    }
+
+    // Draw grid overlay
+    function drawGrid() {
+      if (!params.showGrid) return;
+      
+      ctx.strokeStyle = params.gridColor;
+      ctx.lineWidth = 1;
+      
+      const gridSize = params.gridSize;
+      const offsetX = (mouseX % gridSize) - gridSize;
+      const offsetY = (mouseY % gridSize) - gridSize;
+      
+      // Vertical lines
+      for (let x = offsetX; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      
+      // Horizontal lines
+      for (let y = offsetY; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+    
+    // Draw connections between nearby particles
+    function drawConnections() {
+      if (!params.showConnections) return;
+      
+      ctx.strokeStyle = params.connectionColor;
+      
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const p1 = particles[i];
+          const p2 = particles[j];
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < params.connectionDistance) {
+            const opacity = (1 - distance / params.connectionDistance) * params.connectionOpacity * p1.opacity * p2.opacity;
+            ctx.globalAlpha = opacity;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+      
+      ctx.globalAlpha = 1;
+    }
+    
+    // Animation loop
+    function animate() {
+      updateMouse();
+      
+      // Clear canvas
+      if (params.showGradient) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, params.gradientTop);
+        gradient.addColorStop(1, params.gradientBottom);
+        ctx.fillStyle = gradient;
+      } else {
+        ctx.fillStyle = params.backgroundColor;
+      }
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw grid overlay
+      drawGrid();
+      
+      // Update particles
+      particles.forEach(particle => {
+        particle.update(params);
+      });
+      
+      // Apply clustering after all particles are updated
+      if (params.enableClustering) {
+        particles.forEach(particle => {
+          particles.forEach(other => {
+            if (other === particle) return;
+            const odx = other.x - particle.x;
+            const ody = other.y - particle.y;
+            const odistance = Math.sqrt(odx * odx + ody * ody);
+            
+            if (odistance < params.clusterRadius && odistance > 0) {
+              const clusterForce = (1 - odistance / params.clusterRadius) * params.clusterStrength * 0.05;
+              particle.x += (odx / odistance) * clusterForce;
+              particle.y += (ody / odistance) * clusterForce;
+            }
+          });
+        });
+      }
+      
+      // Draw connections
+      drawConnections();
+      
+      // Draw particles
+      particles.forEach(particle => {
+        particle.draw(params);
+      });
+      
+      requestAnimationFrame(animate);
+    }
+
+    // Start animation
+    animate();
+    }); // end DOMContentLoaded
+  </script>
+</body>
+</html>
