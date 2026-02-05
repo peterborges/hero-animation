@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hero Animation - Interactive Particle System</title>
   
-  <!-- Tweakpane CSS (v3 for script-tag compatibility) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tweakpane@3.1.6/dist/tweakpane.min.css">
+  <!-- Tweakpane CSS (v3; unpkg if jsDelivr 404) -->
+  <link rel="stylesheet" href="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.css" crossorigin="">
   
   <style>
     * {
@@ -56,8 +56,8 @@
   <canvas id="canvas"></canvas>
   <div class="cursor-dot" id="cursorDot"></div>
 
-  <!-- Tweakpane JS (v3 for script-tag compatibility) -->
-  <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.6/dist/tweakpane.min.js"></script>
+  <!-- Tweakpane JS (v3) -->
+  <script src="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.js" crossorigin=""></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -416,7 +416,7 @@
 <!-- Add this script before closing </body> tag -->
 <script>
 ${script}
-</script>
+${'</scr' + 'ipt>'}
 
 <!-- Add these styles to your CSS -->
 <style>

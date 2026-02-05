@@ -4,10 +4,10 @@ A cursor-interactive particle hero animation with [Tweakpane](https://cocopon.gi
 
 ## Run locally
 
-Serve the project over HTTP (required for CDN scripts to load):
+**Important:** Run the server from inside the `hero-animation` folder so the root URL serves `index.html`.
 
 ```bash
-# From this directory
+cd /path/to/hero-animation
 python3 -m http.server 8080
 ```
 
