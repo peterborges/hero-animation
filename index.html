@@ -473,6 +473,32 @@
     colorF.addInput(params, 'dotColor', { label: 'dot' });
     colorF.addInput(params, 'bgColor',  { label: 'background' });
 
+    // ── Copy Code ──
+    pane.addSeparator();
+    const btn = pane.addButton({ title: '📋 Copy code' });
+    btn.on('click', () => {
+      // Bake current params into a self-contained copy of the page source,
+      // with the params block replaced by the live values.
+      fetch(window.location.href)
+        .then(r => r.text())
+        .then(src => {
+          // Patch the params literal with current live values
+          const patched = src.replace(
+            /const params = \{[\s\S]*?\};(\s*\/\/ ─── Mouse)/,
+            'const params = ' + JSON.stringify(params, null, 6) + ';$1'
+          );
+          return navigator.clipboard.writeText(patched);
+        })
+        .then(() => {
+          btn.title = '✅ Copied!';
+          setTimeout(() => { btn.title = '📋 Copy code'; }, 2000);
+        })
+        .catch(() => {
+          // Fallback: copy params JSON only
+          navigator.clipboard.writeText(JSON.stringify(params, null, 2));
+        });
+    });
+
     // ─── Init & start ────────────────────────────────────────────────────────
     resize();
     requestAnimationFrame(frame);
