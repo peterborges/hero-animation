@@ -112,22 +112,36 @@
       font-style: italic;
       text-align: center;
     }
+    #preset-storage-row {
+      padding: 5px 10px;
+      border-bottom: 1px solid #2a2a2a;
+      background: #191919;
+    }
+    #preset-storage-label {
+      font-size: 10px;
+      color: #666;
+      font-family: 'SF Mono', 'Fira Mono', monospace;
+      user-select: all;
+    }
     #preset-import-row {
       padding: 6px 8px;
       border-top: 1px solid #2a2a2a;
+      display: flex;
+      gap: 4px;
     }
-    #preset-import-btn {
-      width: 100%;
+    #preset-import-btn, #preset-export-all-btn {
+      flex: 1;
       background: #2a2a2a;
       border: 1px solid #3a3a3a;
       border-radius: 3px;
       color: #aaa;
-      font-size: 11px;
-      padding: 4px 8px;
+      font-size: 10px;
+      padding: 4px 6px;
       cursor: pointer;
       text-align: center;
+      white-space: nowrap;
     }
-    #preset-import-btn:hover { background: #333; color: #fff; }
+    #preset-import-btn:hover, #preset-export-all-btn:hover { background: #333; color: #fff; }
     #preset-toast {
       position: fixed;
       bottom: 20px;
@@ -151,13 +165,17 @@
   <canvas id="canvas"></canvas>
 
   <div id="preset-panel">
-    <header>Presets <span>localStorage</span></header>
+    <header>Presets</header>
+    <div id="preset-storage-row">
+      <span id="preset-storage-label">💾 Stored in browser localStorage</span>
+    </div>
     <div id="preset-save-row">
       <input id="preset-name-input" type="text" placeholder="Name this preset…" maxlength="40">
       <button id="preset-save-btn">Save</button>
     </div>
     <div id="preset-list"></div>
     <div id="preset-import-row">
+      <button id="preset-export-all-btn">⬇ Export all as JSON</button>
       <button id="preset-import-btn">⬆ Import JSON</button>
       <input id="preset-import-file" type="file" accept=".json" style="display:none">
     </div>
@@ -625,28 +643,197 @@
 
     // ── Copy Code ──
     pane.addSeparator();
-    const btn = pane.addButton({ title: '📋 Copy code' });
+    const btn = pane.addButton({ title: '📋 Copy shader' });
     btn.on('click', () => {
-      // Bake current params into a self-contained copy of the page source,
-      // with the params block replaced by the live values.
-      fetch(window.location.href)
-        .then(r => r.text())
-        .then(src => {
-          // Patch the params literal with current live values
-          const patched = src.replace(
-            /const params = \{[\s\S]*?\};(\s*\/\/ ─── Mouse)/,
-            'const params = ' + JSON.stringify(params, null, 6) + ';$1'
-          );
-          return navigator.clipboard.writeText(patched);
-        })
-        .then(() => {
-          btn.title = '✅ Copied!';
-          setTimeout(() => { btn.title = '📋 Copy code'; }, 2000);
-        })
-        .catch(() => {
-          // Fallback: copy params JSON only
-          navigator.clipboard.writeText(JSON.stringify(params, null, 2));
-        });
+      const p = JSON.stringify(params, null, 2);
+      const snippet = `<!--
+  DITHER SHADER — drop into your portfolio site.
+  1. Add a <canvas id="hero-canvas"> where you want the animation.
+  2. Paste this <script> block before </body>.
+  3. The params object controls every visual property — tweak freely.
+-->
+<script>
+(function () {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // ── Params (edit these) ──────────────────────────────────────────
+  const params = ${p};
+
+  // ── Sizing ───────────────────────────────────────────────────────
+  let W, H, PW, PH;
+  function resize() {
+    W = canvas.offsetWidth;  H = canvas.offsetHeight;
+    canvas.width = W;        canvas.height = H;
+    PW = Math.ceil(W / params.pixelScale);
+    PH = Math.ceil(H / params.pixelScale);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ── Mouse ────────────────────────────────────────────────────────
+  let mxPx = W / 2, myPx = H / 2;
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mxPx = e.clientX - r.left;
+    myPx = e.clientY - r.top;
+  });
+
+  // ── Bayer matrices ───────────────────────────────────────────────
+  const BAYER = {
+    2:[[0,2],[3,1]],
+    4:[[ 0, 8, 2,10],[12, 4,14, 6],[ 3,11, 1, 9],[15, 7,13, 5]],
+  };
+
+  // ── Value noise ──────────────────────────────────────────────────
+  function hash(n){let x=Math.sin(n)*43758.5453123;return x-Math.floor(x);}
+  function noise2(x,y){
+    const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+    const ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
+    const n00=hash(ix+iy*57),n10=hash(ix+1+iy*57),n01=hash(ix+(iy+1)*57),n11=hash(ix+1+(iy+1)*57);
+    return n00*(1-ux)*(1-uy)+n10*ux*(1-uy)+n01*(1-ux)*uy+n11*ux*uy;
+  }
+  function fbm(x,y,oct){let v=0,a=0.5,f=1;for(let i=0;i<oct;i++){v+=a*noise2(x*f,y*f);a*=0.5;f*=2.1;}return v;}
+
+  // ── Blue noise texture (64×64) ───────────────────────────────────
+  const BN_SIZE = 64;
+  const blueNoise = (() => {
+    const N=BN_SIZE*BN_SIZE, arr=new Float32Array(N);
+    let s=1234567;
+    function rng(){s=(s*1664525+1013904223)&0xffffffff;return(s>>>1)/0x7fffffff;}
+    for(let i=0;i<N;i++) arr[i]=rng();
+    const sigma=1.9,kR=Math.ceil(sigma*3),tmp=new Float32Array(N);
+    function gaussBlur(src,dst){
+      for(let y=0;y<BN_SIZE;y++) for(let x=0;x<BN_SIZE;x++){
+        let sum=0,w=0;
+        for(let dy=-kR;dy<=kR;dy++) for(let dx=-kR;dx<=kR;dx++){
+          const g=Math.exp(-(dx*dx+dy*dy)/(2*sigma*sigma));
+          sum+=src[((y+dy+BN_SIZE)%BN_SIZE)*BN_SIZE+(x+dx+BN_SIZE)%BN_SIZE]*g; w+=g;
+        }
+        dst[y*BN_SIZE+x]=sum/w;
+      }
+    }
+    for(let pass=0;pass<3;pass++){
+      gaussBlur(arr,tmp);
+      const idx=Array.from({length:N},(_,i)=>i).sort((a,b)=>tmp[a]-tmp[b]);
+      for(let i=0;i<N;i++) arr[idx[i]]=(i+0.5)/N;
+    }
+    return arr;
+  })();
+
+  // ── Luminance field ──────────────────────────────────────────────
+  function sampleField(px, py, t) {
+    const nx=(px/PW)*params.scale, ny=(py/PH)*params.scale, sp=params.speed;
+    let v;
+    switch(params.fieldMode){
+      case 'plasma':
+        v =Math.sin(nx*3.1+t*sp);
+        v+=Math.sin(ny*2.7-t*sp*0.7);
+        v+=Math.sin((nx+ny)*2.0+t*sp*0.5);
+        v+=Math.sin(Math.sqrt((nx-0.5*params.scale)**2+(ny-0.5*params.scale)**2)*4);
+        v=(v+4)/8; break;
+      case 'radial':{
+        const cx=params.scale*0.5,cy=params.scale*0.5;
+        v=0.5+0.5*Math.sin(Math.sqrt((nx-cx)**2+(ny-cy)**2)*5-t*sp); break;}
+      case 'noise':
+        v=fbm(nx+t*sp*0.3,ny+t*sp*0.2,params.octaves); break;
+      case 'bands':
+        v=0.5+0.5*Math.sin(nx*4+t*sp+Math.sin(ny*2+t*sp*0.5)*2); break;
+      default: v=0.5;
+    }
+    v=(v-0.5)*params.contrast+0.5+params.bias;
+    return Math.max(0,Math.min(1,v));
+  }
+
+  // ── Cursor influence ─────────────────────────────────────────────
+  function cursorInfluence(px, py, t, v) {
+    const sx=px/PW*W, sy=py/PH*H;
+    const dist=Math.sqrt((sx-mxPx)**2+(sy-myPx)**2);
+    const r=params.cursorRadius;
+    if(dist>=r) return v;
+    const strength=(1-dist/r)**2*params.cursorStrength;
+    switch(params.cursorMode){
+      case 'brighten': return Math.min(1,v+strength);
+      case 'darken':   return Math.max(0,v-strength);
+      case 'invert':   return v+(1-2*v)*strength;
+      case 'ripple':{const wave=Math.sin(dist*0.2-t*4)*0.5+0.5;return Math.max(0,Math.min(1,v+(wave-0.5)*strength));}
+      default: return v;
+    }
+  }
+
+  // ── Dithering ────────────────────────────────────────────────────
+  function buildLum(t){
+    const lum=new Float32Array(PW*PH);
+    for(let py=0;py<PH;py++) for(let px=0;px<PW;px++){
+      let v=sampleField(px,py,t); v=cursorInfluence(px,py,t,v);
+      lum[py*PW+px]=v;
+    }
+    return lum;
+  }
+
+  function dither(lum){
+    const out=new Uint8Array(PW*PH);
+    if(params.ditherMode==='ordered'){
+      const mat=BAYER[params.matrixSize]||BAYER[4],ms=mat.length,mm=ms*ms;
+      for(let py=0;py<PH;py++) for(let px=0;px<PW;px++)
+        out[py*PW+px]=lum[py*PW+px]>((mat[py%ms][px%ms]+0.5)/mm)?1:0;
+    } else if(params.ditherMode==='voidcluster'){
+      const phase=(Date.now()*0.00003)%1;
+      for(let py=0;py<PH;py++) for(let px=0;px<PW;px++)
+        out[py*PW+px]=lum[py*PW+px]>((blueNoise[(py%BN_SIZE)*BN_SIZE+(px%BN_SIZE)]+phase)%1)?1:0;
+    } else if(params.ditherMode==='none'){
+      for(let i=0;i<lum.length;i++) out[i]=lum[i]>params.threshold?1:0;
+    } else { // bluenoise (default)
+      for(let py=0;py<PH;py++) for(let px=0;px<PW;px++)
+        out[py*PW+px]=lum[py*PW+px]>blueNoise[(py%BN_SIZE)*BN_SIZE+(px%BN_SIZE)]?1:0;
+    }
+    return out;
+  }
+
+  // ── Renderer ─────────────────────────────────────────────────────
+  function renderDots(out){
+    const sc=params.pixelScale, {r:br,g:bg,b:bb}=params.bgColor, {r:dr,g:dg,b:db}=params.dotColor;
+    ctx.fillStyle=\`rgb(\${br},\${bg},\${bb})\`; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=\`rgb(\${dr},\${dg},\${db})\`;
+    const half=sc*0.5, radius=half*params.dotFill, PI2=Math.PI*2;
+    if(params.dotShape==='circle'){
+      ctx.beginPath();
+      for(let py=0;py<PH;py++) for(let px=0;px<PW;px++){
+        if(!out[py*PW+px]) continue;
+        ctx.moveTo(px*sc+half+radius,py*sc+half);
+        ctx.arc(px*sc+half,py*sc+half,radius,0,PI2);
+      }
+      ctx.fill('evenodd');
+    } else {
+      for(let py=0;py<PH;py++) for(let px=0;px<PW;px++){
+        if(!out[py*PW+px]) continue;
+        const cx=px*sc+half, cy=py*sc+half;
+        if(params.dotShape==='square') ctx.fillRect(cx-radius,cy-radius,radius*2,radius*2);
+        else{ const arm=radius*0.38; ctx.fillRect(cx-arm,cy-radius,arm*2,radius*2); ctx.fillRect(cx-radius,cy-arm,radius*2,arm*2); }
+      }
+    }
+  }
+
+  // ── Loop ─────────────────────────────────────────────────────────
+  let t=0, lastScale=params.pixelScale, smoothedLum=null;
+  function frame(ts){
+    t=ts*0.001;
+    if(params.pixelScale!==lastScale){ lastScale=params.pixelScale; smoothedLum=null; resize(); }
+    const raw=buildLum(t);
+    if(!smoothedLum||smoothedLum.length!==raw.length){ smoothedLum=raw.slice(); }
+    else{ const a=params.smoothing; for(let i=0;i<raw.length;i++) smoothedLum[i]+=(raw[i]-smoothedLum[i])*a; }
+    renderDots(dither(smoothedLum));
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+<\/script>`;
+
+      navigator.clipboard.writeText(snippet).then(() => {
+        btn.title = '✅ Copied!';
+        setTimeout(() => { btn.title = '📋 Copy shader'; }, 2000);
+      });
     });
 
     // ─── Preset system ───────────────────────────────────────────────────────
@@ -754,6 +941,18 @@
       if (e.key === 'Enter') document.getElementById('preset-save-btn').click();
     });
 
+    // Export all presets as JSON file
+    document.getElementById('preset-export-all-btn').addEventListener('click', () => {
+      const all = loadAllPresets();
+      if (Object.keys(all).length === 0) { toast('No presets to export', '#a00'); return; }
+      const json = JSON.stringify(all, null, 2);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      a.download = 'dither-presets.json';
+      a.click();
+      toast('Exported ' + Object.keys(all).length + ' preset(s)');
+    });
+
     // Import JSON
     document.getElementById('preset-import-btn').addEventListener('click', () => {
       document.getElementById('preset-import-file').click();
@@ -781,6 +980,10 @@
       reader.readAsText(file);
       e.target.value = '';
     });
+
+    // Show storage location
+    document.getElementById('preset-storage-label').textContent =
+      '💾 ' + (window.location.origin || 'file://') + ' › localStorage["' + STORAGE_KEY + '"]';
 
     // Initial render
     renderPresetList();
