@@ -11,137 +11,119 @@
     #canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
     .tp-dfwv { width: 280px !important; }
 
-    /* ── Preset panel ── */
-    #preset-panel {
-      position: fixed;
-      top: 0; right: 296px;
-      width: 220px;
-      background: #1f1f1f;
-      border: 1px solid #3a3a3a;
-      border-radius: 6px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 11px;
-      color: #ccc;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      max-height: 90vh;
+    /* ── Preset blade (injected into Tweakpane) ── */
+    .preset-blade {
+      padding: 4px 8px 8px;
     }
-    #preset-panel header {
-      padding: 8px 10px 6px;
-      font-weight: 600;
-      font-size: 11px;
-      color: #fff;
-      border-bottom: 1px solid #3a3a3a;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    #preset-panel header span { opacity: 0.4; font-size: 10px; font-weight: 400; text-transform: none; }
-    #preset-save-row {
+    .preset-save-row {
       display: flex;
       gap: 4px;
-      padding: 7px 8px;
-      border-bottom: 1px solid #2a2a2a;
+      margin-bottom: 6px;
     }
-    #preset-name-input {
+    .preset-name-input {
       flex: 1;
-      background: #111;
+      background: #1a1a1a;
       border: 1px solid #3a3a3a;
       border-radius: 3px;
       color: #eee;
       font-size: 11px;
       padding: 4px 6px;
       outline: none;
+      font-family: inherit;
     }
-    #preset-name-input:focus { border-color: #666; }
-    #preset-save-btn {
+    .preset-name-input:focus { border-color: #555; }
+    .preset-save-btn {
       background: #2d6af0;
       border: none;
       border-radius: 3px;
       color: #fff;
       font-size: 11px;
-      padding: 4px 8px;
+      padding: 4px 9px;
       cursor: pointer;
       white-space: nowrap;
+      font-family: inherit;
     }
-    #preset-save-btn:hover { background: #3d7aff; }
-    #preset-list {
+    .preset-save-btn:hover { background: #3d7aff; }
+
+    .preset-list {
+      max-height: 180px;
       overflow-y: auto;
-      flex: 1;
+      margin-bottom: 6px;
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
     }
     .preset-item {
       display: flex;
       align-items: center;
-      padding: 5px 8px;
-      border-bottom: 1px solid #2a2a2a;
-      gap: 4px;
+      padding: 4px 6px;
+      border-bottom: 1px solid #222;
+      gap: 3px;
     }
-    .preset-item:hover { background: #2a2a2a; }
+    .preset-item:last-child { border-bottom: none; }
+    .preset-item:hover { background: #222; }
     .preset-load-btn {
       flex: 1;
       background: none;
       border: none;
-      color: #ddd;
+      color: #ccc;
       font-size: 11px;
       text-align: left;
       cursor: pointer;
-      padding: 2px 0;
+      padding: 1px 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-family: inherit;
     }
     .preset-load-btn:hover { color: #fff; }
-    .preset-export-btn, .preset-delete-btn {
+    .preset-icon-btn {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       padding: 2px 3px;
       line-height: 1;
-      opacity: 0.5;
+      opacity: 0.45;
       border-radius: 3px;
     }
-    .preset-export-btn:hover { opacity: 1; background: #333; }
-    .preset-delete-btn:hover { opacity: 1; background: #500; }
-    #preset-empty {
-      padding: 12px 10px;
-      color: #555;
+    .preset-icon-btn:hover { opacity: 1; background: #333; }
+    .preset-icon-btn.del:hover { background: #500; }
+    .preset-empty {
+      padding: 10px 8px;
+      color: #444;
+      font-size: 11px;
       font-style: italic;
       text-align: center;
+      font-family: inherit;
     }
-    #preset-storage-row {
-      padding: 5px 10px;
-      border-bottom: 1px solid #2a2a2a;
-      background: #191919;
-    }
-    #preset-storage-label {
+    .preset-storage-label {
       font-size: 10px;
-      color: #666;
+      color: #555;
       font-family: 'SF Mono', 'Fira Mono', monospace;
       user-select: all;
+      margin-bottom: 6px;
+      display: block;
     }
-    #preset-import-row {
-      padding: 6px 8px;
-      border-top: 1px solid #2a2a2a;
+    .preset-io-row {
       display: flex;
       gap: 4px;
     }
-    #preset-import-btn, #preset-export-all-btn {
+    .preset-io-btn {
       flex: 1;
-      background: #2a2a2a;
-      border: 1px solid #3a3a3a;
+      background: #1e1e1e;
+      border: 1px solid #333;
       border-radius: 3px;
-      color: #aaa;
+      color: #999;
       font-size: 10px;
       padding: 4px 6px;
       cursor: pointer;
       text-align: center;
       white-space: nowrap;
+      font-family: inherit;
     }
-    #preset-import-btn:hover, #preset-export-all-btn:hover { background: #333; color: #fff; }
+    .preset-io-btn:hover { background: #2a2a2a; color: #ddd; }
+
+    /* ── Toast ── */
     #preset-toast {
       position: fixed;
       bottom: 20px;
@@ -163,24 +145,8 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
-
-  <div id="preset-panel">
-    <header>Presets</header>
-    <div id="preset-storage-row">
-      <span id="preset-storage-label">💾 Stored in browser localStorage</span>
-    </div>
-    <div id="preset-save-row">
-      <input id="preset-name-input" type="text" placeholder="Name this preset…" maxlength="40">
-      <button id="preset-save-btn">Save</button>
-    </div>
-    <div id="preset-list"></div>
-    <div id="preset-import-row">
-      <button id="preset-export-all-btn">⬇ Export all as JSON</button>
-      <button id="preset-import-btn">⬆ Import JSON</button>
-      <input id="preset-import-file" type="file" accept=".json" style="display:none">
-    </div>
-  </div>
   <div id="preset-toast"></div>
+  <input id="preset-import-file" type="file" accept=".json" style="display:none">
 
   <script src="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.js" crossorigin=""></script>
   <script>
@@ -239,7 +205,7 @@
     window.addEventListener('resize', resize);
 
     // ─── Mouse ──────────────────────────────────────────────────────────────
-    let mxPx = window.innerWidth / 2, myPx = window.innerHeight / 2; // pixel coords
+    let mxPx = window.innerWidth / 2, myPx = window.innerHeight / 2;
     let rippleT = 0;
 
     document.addEventListener('mousemove', e => {
@@ -281,7 +247,6 @@
 
     // ─── Noise helpers (simple value noise) ─────────────────────────────────
     function hash(n) {
-      // cheap but decent hash
       let x = Math.sin(n) * 43758.5453123;
       return x - Math.floor(x);
     }
@@ -307,7 +272,6 @@
 
     // ─── Luminance field ────────────────────────────────────────────────────
     function sampleField(px, py, t) {
-      // px, py are pixel buffer coords; return 0..1 luminance
       const nx = (px / PW) * params.scale;
       const ny = (py / PH) * params.scale;
       const speed = params.speed;
@@ -342,7 +306,6 @@
           v = 0.5;
       }
 
-      // contrast + bias
       v = (v - 0.5) * params.contrast + 0.5 + params.bias;
       return Math.max(0, Math.min(1, v));
     }
@@ -372,22 +335,15 @@
     }
 
     // ─── Blue noise texture (64×64, void-and-cluster approximation) ─────────
-    // Generated via a seeded, iterative void-and-cluster algorithm offline.
-    // Using it as a spatially well-distributed, aperiodic threshold mask gives
-    // far better temporal stability than scan-line error diffusion.
     const BN_SIZE = 64;
     const blueNoise = (() => {
-      // Approximate blue noise via a multi-pass rank shuffle of white noise
-      // seeded deterministically — good enough for animation dithering.
       const N = BN_SIZE * BN_SIZE;
       const arr = new Float32Array(N);
 
-      // Seed with low-discrepancy white noise
       let s = 1234567;
       function rng() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 1) / 0x7fffffff; }
       for (let i = 0; i < N; i++) arr[i] = rng();
 
-      // Three rounds of Gaussian-filtered rank sort (void-and-cluster approximation)
       const sigma = 1.9;
       const kR    = Math.ceil(sigma * 3);
       const tmp   = new Float32Array(N);
@@ -411,17 +367,14 @@
         }
       }
 
-      // Rank-based void-and-cluster: 3 passes
       for (let pass = 0; pass < 3; pass++) {
         gaussBlur(arr, tmp);
-        // Build rank order from blurred image
         const idx = Array.from({length: N}, (_, i) => i);
         idx.sort((a, b) => tmp[a] - tmp[b]);
-        // Assign rank-normalized values back
         for (let i = 0; i < N; i++) arr[idx[i]] = (i + 0.5) / N;
       }
 
-      return arr; // values in [0,1], blue-noise distributed
+      return arr;
     })();
 
     // ─── Dithering ──────────────────────────────────────────────────────────
@@ -453,8 +406,6 @@
     }
 
     function applyBlueNoise(lum) {
-      // Spatially stable, temporally smooth — threshold against blue noise texture.
-      // Tiling the BN_SIZE×BN_SIZE texture over the pixel buffer.
       const out = new Uint8Array(PW * PH);
       for (let py = 0; py < PH; py++) {
         for (let px = 0; px < PW; px++) {
@@ -468,16 +419,12 @@
     }
 
     function applyVoidCluster(lum) {
-      // Blue noise with a slow per-frame phase rotation — the texture tiles
-      // shift by a small amount each frame, giving a gentle animated texture
-      // rather than a locked halftone grid, while staying temporally stable.
       const out  = new Uint8Array(PW * PH);
-      const phase = (Date.now() * 0.00003) % 1; // very slow drift
+      const phase = (Date.now() * 0.00003) % 1;
       for (let py = 0; py < PH; py++) {
         for (let px = 0; px < PW; px++) {
           const bx = px % BN_SIZE;
           const by = py % BN_SIZE;
-          // Rotate threshold by phase (wraps within [0,1])
           let threshold = (blueNoise[by * BN_SIZE + bx] + phase) % 1;
           out[py * PW + px] = lum[py * PW + px] > threshold ? 1 : 0;
         }
@@ -494,9 +441,6 @@
     }
 
     // ─── Dot renderer ───────────────────────────────────────────────────────
-    // We draw dot shapes directly onto the offscreen canvas using ctx calls
-    // after scaling — this gives crisp anti-aliased dots at display resolution.
-
     function renderDots(out) {
       const scale = params.pixelScale;
       const { r: br, g: bg, b: bb } = params.bgColor;
@@ -512,7 +456,6 @@
       const PI2    = Math.PI * 2;
 
       if (params.dotShape === 'circle') {
-        // Batch all circles into one path for performance
         ctx.beginPath();
         for (let py = 0; py < PH; py++) {
           for (let px = 0; px < PW; px++) {
@@ -531,7 +474,6 @@
             if (params.dotShape === 'square') {
               ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
             } else {
-              // cross
               const arm = radius * 0.38;
               ctx.fillRect(cx - arm,    cy - radius, arm * 2,    radius * 2);
               ctx.fillRect(cx - radius, cy - arm,    radius * 2, arm * 2);
@@ -544,13 +486,12 @@
     // ─── Main render loop ────────────────────────────────────────────────────
     let t = 0;
     let lastPixelScale = params.pixelScale;
-    let smoothedLum = null; // temporally smoothed luminance buffer
+    let smoothedLum = null;
 
     function frame(ts) {
       t = ts * 0.001;
       rippleT = Math.min(rippleT + 0.016, 100);
 
-      // Rebuild buffers if scale changed
       if (params.pixelScale !== lastPixelScale) {
         lastPixelScale = params.pixelScale;
         smoothedLum = null;
@@ -559,7 +500,6 @@
 
       const rawLum = buildLuminanceBuffer(t);
 
-      // Temporal smoothing: lerp the previous smoothed buffer toward this frame
       if (!smoothedLum || smoothedLum.length !== rawLum.length) {
         smoothedLum = rawLum.slice();
       } else {
@@ -579,9 +519,7 @@
         default:            out = applyNone(lum);           break;
       }
 
-      // Render dots directly to the display canvas at full resolution
       renderDots(out);
-
       requestAnimationFrame(frame);
     }
 
@@ -836,7 +774,7 @@
       });
     });
 
-    // ─── Preset system ───────────────────────────────────────────────────────
+    // ─── Preset system (inside Tweakpane as a custom blade) ──────────────────
     const STORAGE_KEY = 'dither-shader-presets';
 
     function loadAllPresets() {
@@ -855,7 +793,7 @@
     function applyPreset(snapshot) {
       Object.assign(params, snapshot);
       pane.refresh();
-      smoothedLum = null; // reset smoothing buffer so new params take effect immediately
+      smoothedLum = null;
     }
 
     function toast(msg, color = '#2d6af0') {
@@ -867,14 +805,109 @@
       el._t = setTimeout(() => el.classList.remove('show'), 1800);
     }
 
+    // Inject a custom HTML blade into a Tweakpane folder
+    pane.addSeparator();
+    const presetF = pane.addFolder({ title: 'Presets', expanded: true });
+
+    // Tweakpane v3 lets us inject arbitrary HTML via a custom blade element
+    // We use addMonitor on a dummy object and then replace the element, but the
+    // simplest reliable approach is to grab the folder's container element and
+    // append our blade after Tweakpane renders.
+    const blade = document.createElement('div');
+    blade.className = 'preset-blade';
+    blade.innerHTML = `
+      <span class="preset-storage-label" id="preset-storage-label"></span>
+      <div class="preset-save-row">
+        <input class="preset-name-input" id="preset-name-input" type="text" placeholder="Name this preset…" maxlength="40">
+        <button class="preset-save-btn" id="preset-save-btn">Save</button>
+      </div>
+      <div class="preset-list" id="preset-list"></div>
+      <div class="preset-io-row">
+        <button class="preset-io-btn" id="preset-export-all-btn">⬇ Export JSON</button>
+        <button class="preset-io-btn" id="preset-import-btn">⬆ Import JSON</button>
+      </div>
+    `;
+
+    // Wait one microtask so Tweakpane has rendered the folder into the DOM
+    Promise.resolve().then(() => {
+      // Tweakpane 3 folder content is inside .tp-fldv_c; fall back to the root element
+      const root = presetF.controller_.view.element;
+      const folderEl = root.querySelector('.tp-fldv_c') || root;
+      folderEl.appendChild(blade);
+
+      // Wire up storage label
+      document.getElementById('preset-storage-label').textContent =
+        '💾 ' + (window.location.origin || 'file://') + ' › localStorage["' + STORAGE_KEY + '"]';
+
+      // Wire up save
+      document.getElementById('preset-save-btn').addEventListener('click', () => {
+        const input = document.getElementById('preset-name-input');
+        const name = input.value.trim();
+        if (!name) { input.focus(); return; }
+        const all = loadAllPresets();
+        all[name] = snapParams();
+        saveAllPresets(all);
+        renderPresetList();
+        input.value = '';
+        toast('Saved "' + name + '"');
+      });
+
+      document.getElementById('preset-name-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('preset-save-btn').click();
+      });
+
+      // Wire up export all
+      document.getElementById('preset-export-all-btn').addEventListener('click', () => {
+        const all = loadAllPresets();
+        if (Object.keys(all).length === 0) { toast('No presets to export', '#a00'); return; }
+        const json = JSON.stringify(all, null, 2);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        a.download = 'dither-presets.json';
+        a.click();
+        toast('Exported ' + Object.keys(all).length + ' preset(s)');
+      });
+
+      // Wire up import
+      document.getElementById('preset-import-btn').addEventListener('click', () => {
+        document.getElementById('preset-import-file').click();
+      });
+      document.getElementById('preset-import-file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            const all = loadAllPresets();
+            let count = 0;
+            for (const [name, snap] of Object.entries(imported)) {
+              all[name] = snap;
+              count++;
+            }
+            saveAllPresets(all);
+            renderPresetList();
+            toast('Imported ' + count + ' preset' + (count !== 1 ? 's' : ''));
+          } catch {
+            toast('Invalid JSON file', '#a00');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      renderPresetList();
+    });
+
     function renderPresetList() {
       const list = document.getElementById('preset-list');
+      if (!list) return;
       const presets = loadAllPresets();
       const names = Object.keys(presets);
       list.innerHTML = '';
 
       if (names.length === 0) {
-        list.innerHTML = '<div id="preset-empty">No presets saved yet.</div>';
+        list.innerHTML = '<div class="preset-empty">No presets saved yet.</div>';
         return;
       }
 
@@ -892,9 +925,9 @@
         });
 
         const exportBtn = document.createElement('button');
-        exportBtn.className = 'preset-export-btn';
+        exportBtn.className = 'preset-icon-btn';
         exportBtn.textContent = '⬇';
-        exportBtn.title = 'Export "' + name + '" as JSON';
+        exportBtn.title = 'Export "' + name + '"';
         exportBtn.addEventListener('click', () => {
           const json = JSON.stringify({ [name]: presets[name] }, null, 2);
           const a = document.createElement('a');
@@ -905,7 +938,7 @@
         });
 
         const delBtn = document.createElement('button');
-        delBtn.className = 'preset-delete-btn';
+        delBtn.className = 'preset-icon-btn del';
         delBtn.textContent = '✕';
         delBtn.title = 'Delete "' + name + '"';
         delBtn.addEventListener('click', () => {
@@ -922,71 +955,6 @@
         list.appendChild(item);
       });
     }
-
-    // Save button
-    document.getElementById('preset-save-btn').addEventListener('click', () => {
-      const input = document.getElementById('preset-name-input');
-      const name = input.value.trim();
-      if (!name) { input.focus(); return; }
-      const all = loadAllPresets();
-      all[name] = snapParams();
-      saveAllPresets(all);
-      renderPresetList();
-      input.value = '';
-      toast('Saved "' + name + '"');
-    });
-
-    // Save on Enter
-    document.getElementById('preset-name-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('preset-save-btn').click();
-    });
-
-    // Export all presets as JSON file
-    document.getElementById('preset-export-all-btn').addEventListener('click', () => {
-      const all = loadAllPresets();
-      if (Object.keys(all).length === 0) { toast('No presets to export', '#a00'); return; }
-      const json = JSON.stringify(all, null, 2);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-      a.download = 'dither-presets.json';
-      a.click();
-      toast('Exported ' + Object.keys(all).length + ' preset(s)');
-    });
-
-    // Import JSON
-    document.getElementById('preset-import-btn').addEventListener('click', () => {
-      document.getElementById('preset-import-file').click();
-    });
-    document.getElementById('preset-import-file').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const imported = JSON.parse(ev.target.result);
-          const all = loadAllPresets();
-          let count = 0;
-          for (const [name, snap] of Object.entries(imported)) {
-            all[name] = snap;
-            count++;
-          }
-          saveAllPresets(all);
-          renderPresetList();
-          toast('Imported ' + count + ' preset' + (count !== 1 ? 's' : ''));
-        } catch {
-          toast('Invalid JSON file', '#a00');
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    });
-
-    // Show storage location
-    document.getElementById('preset-storage-label').textContent =
-      '💾 ' + (window.location.origin || 'file://') + ' › localStorage["' + STORAGE_KEY + '"]';
-
-    // Initial render
-    renderPresetList();
 
     // ─── Init & start ────────────────────────────────────────────────────────
     resize();
