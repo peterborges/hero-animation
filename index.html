@@ -10,10 +10,160 @@
     body { background: #000; overflow: hidden; cursor: crosshair; }
     #canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
     .tp-dfwv { width: 280px !important; }
+
+    /* ── Preset panel ── */
+    #preset-panel {
+      position: fixed;
+      top: 0; right: 296px;
+      width: 220px;
+      background: #1f1f1f;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 11px;
+      color: #ccc;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+    #preset-panel header {
+      padding: 8px 10px 6px;
+      font-weight: 600;
+      font-size: 11px;
+      color: #fff;
+      border-bottom: 1px solid #3a3a3a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    #preset-panel header span { opacity: 0.4; font-size: 10px; font-weight: 400; text-transform: none; }
+    #preset-save-row {
+      display: flex;
+      gap: 4px;
+      padding: 7px 8px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    #preset-name-input {
+      flex: 1;
+      background: #111;
+      border: 1px solid #3a3a3a;
+      border-radius: 3px;
+      color: #eee;
+      font-size: 11px;
+      padding: 4px 6px;
+      outline: none;
+    }
+    #preset-name-input:focus { border-color: #666; }
+    #preset-save-btn {
+      background: #2d6af0;
+      border: none;
+      border-radius: 3px;
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #preset-save-btn:hover { background: #3d7aff; }
+    #preset-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+    .preset-item {
+      display: flex;
+      align-items: center;
+      padding: 5px 8px;
+      border-bottom: 1px solid #2a2a2a;
+      gap: 4px;
+    }
+    .preset-item:hover { background: #2a2a2a; }
+    .preset-load-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #ddd;
+      font-size: 11px;
+      text-align: left;
+      cursor: pointer;
+      padding: 2px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preset-load-btn:hover { color: #fff; }
+    .preset-export-btn, .preset-delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px 3px;
+      line-height: 1;
+      opacity: 0.5;
+      border-radius: 3px;
+    }
+    .preset-export-btn:hover { opacity: 1; background: #333; }
+    .preset-delete-btn:hover { opacity: 1; background: #500; }
+    #preset-empty {
+      padding: 12px 10px;
+      color: #555;
+      font-style: italic;
+      text-align: center;
+    }
+    #preset-import-row {
+      padding: 6px 8px;
+      border-top: 1px solid #2a2a2a;
+    }
+    #preset-import-btn {
+      width: 100%;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 3px;
+      color: #aaa;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+    #preset-import-btn:hover { background: #333; color: #fff; }
+    #preset-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2d6af0;
+      color: #fff;
+      font-size: 12px;
+      padding: 7px 16px;
+      border-radius: 20px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 99999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #preset-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
+
+  <div id="preset-panel">
+    <header>Presets <span>localStorage</span></header>
+    <div id="preset-save-row">
+      <input id="preset-name-input" type="text" placeholder="Name this preset…" maxlength="40">
+      <button id="preset-save-btn">Save</button>
+    </div>
+    <div id="preset-list"></div>
+    <div id="preset-import-row">
+      <button id="preset-import-btn">⬆ Import JSON</button>
+      <input id="preset-import-file" type="file" accept=".json" style="display:none">
+    </div>
+  </div>
+  <div id="preset-toast"></div>
+
   <script src="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.js" crossorigin=""></script>
   <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -498,6 +648,142 @@
           navigator.clipboard.writeText(JSON.stringify(params, null, 2));
         });
     });
+
+    // ─── Preset system ───────────────────────────────────────────────────────
+    const STORAGE_KEY = 'dither-shader-presets';
+
+    function loadAllPresets() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      catch { return {}; }
+    }
+
+    function saveAllPresets(presets) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+    }
+
+    function snapParams() {
+      return JSON.parse(JSON.stringify(params));
+    }
+
+    function applyPreset(snapshot) {
+      Object.assign(params, snapshot);
+      pane.refresh();
+      smoothedLum = null; // reset smoothing buffer so new params take effect immediately
+    }
+
+    function toast(msg, color = '#2d6af0') {
+      const el = document.getElementById('preset-toast');
+      el.textContent = msg;
+      el.style.background = color;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function renderPresetList() {
+      const list = document.getElementById('preset-list');
+      const presets = loadAllPresets();
+      const names = Object.keys(presets);
+      list.innerHTML = '';
+
+      if (names.length === 0) {
+        list.innerHTML = '<div id="preset-empty">No presets saved yet.</div>';
+        return;
+      }
+
+      names.forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'preset-item';
+
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'preset-load-btn';
+        loadBtn.textContent = name;
+        loadBtn.title = 'Load "' + name + '"';
+        loadBtn.addEventListener('click', () => {
+          applyPreset(presets[name]);
+          toast('Loaded "' + name + '"');
+        });
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'preset-export-btn';
+        exportBtn.textContent = '⬇';
+        exportBtn.title = 'Export "' + name + '" as JSON';
+        exportBtn.addEventListener('click', () => {
+          const json = JSON.stringify({ [name]: presets[name] }, null, 2);
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+          a.download = 'dither-preset-' + name.replace(/\s+/g, '-') + '.json';
+          a.click();
+          toast('Exported "' + name + '"');
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'preset-delete-btn';
+        delBtn.textContent = '✕';
+        delBtn.title = 'Delete "' + name + '"';
+        delBtn.addEventListener('click', () => {
+          const all = loadAllPresets();
+          delete all[name];
+          saveAllPresets(all);
+          renderPresetList();
+          toast('Deleted "' + name + '"', '#a00');
+        });
+
+        item.appendChild(loadBtn);
+        item.appendChild(exportBtn);
+        item.appendChild(delBtn);
+        list.appendChild(item);
+      });
+    }
+
+    // Save button
+    document.getElementById('preset-save-btn').addEventListener('click', () => {
+      const input = document.getElementById('preset-name-input');
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      const all = loadAllPresets();
+      all[name] = snapParams();
+      saveAllPresets(all);
+      renderPresetList();
+      input.value = '';
+      toast('Saved "' + name + '"');
+    });
+
+    // Save on Enter
+    document.getElementById('preset-name-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('preset-save-btn').click();
+    });
+
+    // Import JSON
+    document.getElementById('preset-import-btn').addEventListener('click', () => {
+      document.getElementById('preset-import-file').click();
+    });
+    document.getElementById('preset-import-file').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          const all = loadAllPresets();
+          let count = 0;
+          for (const [name, snap] of Object.entries(imported)) {
+            all[name] = snap;
+            count++;
+          }
+          saveAllPresets(all);
+          renderPresetList();
+          toast('Imported ' + count + ' preset' + (count !== 1 ? 's' : ''));
+        } catch {
+          toast('Invalid JSON file', '#a00');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    // Initial render
+    renderPresetList();
 
     // ─── Init & start ────────────────────────────────────────────────────────
     resize();
