@@ -3,875 +3,481 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hero Animation - Interactive Particle System</title>
-  
-  <!-- Tweakpane CSS (v3; unpkg if jsDelivr 404) -->
+  <title>Dither Shader Editor</title>
   <link rel="stylesheet" href="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.css" crossorigin="">
-  
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #000;
-      overflow: hidden;
-      cursor: none;
-    }
-
-    #canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    /* Hide default cursor */
-    body, canvas {
-      cursor: none;
-    }
-
-    /* Custom cursor dot */
-    .cursor-dot {
-      position: fixed;
-      width: 8px;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 10000;
-      transform: translate(-50%, -50%);
-      transition: opacity 0.2s ease;
-    }
-
-    /* Tweakpane positioning */
-    .tp-dfwv {
-      width: 300px !important;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; cursor: crosshair; }
+    #canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+    .tp-dfwv { width: 280px !important; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  <div class="cursor-dot" id="cursorDot"></div>
-
-  <!-- Tweakpane JS (v3) -->
   <script src="https://unpkg.com/tweakpane@3.1.6/dist/tweakpane.min.js" crossorigin=""></script>
-
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-    // ============================================
-    // HERO ANIMATION - INTERACTIVE PARTICLE SYSTEM
-    // ============================================
-    // This creates an interactive particle system that reacts to cursor movement.
-    // All parameters are controllable via Tweakpane for easy customization.
-    // Copy this entire file and integrate into your portfolio site.
+  document.addEventListener('DOMContentLoaded', function () {
 
+    // ─── Canvas setup ───────────────────────────────────────────────────────
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const cursorDot = document.getElementById('cursorDot');
 
-    // Set canvas size
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    let W, H, PW, PH;
 
-    // Mouse position
-    let mouseX = canvas.width / 2;
-    let mouseY = canvas.height / 2;
-    let targetMouseX = mouseX;
-    let targetMouseY = mouseY;
-
-    // Track mouse movement
-    document.addEventListener('mousemove', (e) => {
-      targetMouseX = e.clientX;
-      targetMouseY = e.clientY;
-      cursorDot.style.left = e.clientX + 'px';
-      cursorDot.style.top = e.clientY + 'px';
-    });
-
-    // Smooth mouse tracking
-    function updateMouse() {
-      mouseX += (targetMouseX - mouseX) * 0.1;
-      mouseY += (targetMouseY - mouseY) * 0.1;
+    function resize() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width  = W;
+      canvas.height = H;
+      PW = Math.ceil(W / params.pixelScale);
+      PH = Math.ceil(H / params.pixelScale);
     }
 
-    // Particle class
-    class Particle {
-      constructor(x, y) {
-        this.baseX = x;
-        this.baseY = y;
-        this.x = x;
-        this.y = y;
-        this.size = Math.random() * 2 + 1;
-        this.baseSize = this.size;
-        this.vx = (Math.random() - 0.5) * 0.5;
-        this.vy = (Math.random() - 0.5) * 0.5;
-        this.opacity = Math.random() * 0.5 + 0.2;
-        this.baseOpacity = this.opacity;
-        this.hue = Math.random() * 60; // Base hue for color variation
-      }
-
-      update(params) {
-        const dx = mouseX - this.x;
-        const dy = mouseY - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const maxDistance = params.interactionRadius;
-
-        // Calculate interaction strength
-        let interactionStrength = 0;
-        if (distance < maxDistance) {
-          interactionStrength = 1 - (distance / maxDistance);
-          interactionStrength = Math.pow(interactionStrength, params.interactionFalloff);
-        }
-
-        // Apply interaction based on type
-        if (params.interactionType === 'attract') {
-          // Attract particles to cursor
-          const force = interactionStrength * params.interactionStrength * 0.1;
-          if (distance > 0) {
-            this.x += (dx / distance) * force;
-            this.y += (dy / distance) * force;
-          }
-        } else if (params.interactionType === 'repel') {
-          // Repel particles from cursor
-          const force = interactionStrength * params.interactionStrength * 0.1;
-          if (distance > 0) {
-            this.x -= (dx / distance) * force;
-            this.y -= (dy / distance) * force;
-          }
-        } else if (params.interactionType === 'orbit') {
-          // Orbit around cursor
-          if (distance > 0) {
-            const angle = Math.atan2(dy, dx) + 0.1 * interactionStrength;
-            const radius = distance * (1 - interactionStrength * 0.3);
-            this.x = mouseX + Math.cos(angle) * radius;
-            this.y = mouseY + Math.sin(angle) * radius;
-          }
-        }
-        
-        // Clustering behavior (will be applied in main loop)
-
-        // Apply velocity and damping
-        this.x += this.vx;
-        this.y += this.vy;
-        this.vx *= params.damping;
-        this.vy *= params.damping;
-
-        // Return to base position
-        const returnForce = params.returnStrength * 0.01;
-        this.x += (this.baseX - this.x) * returnForce;
-        this.y += (this.baseY - this.y) * returnForce;
-
-        // Boundary wrapping
-        if (params.wrapEdges) {
-          if (this.x < 0) this.x = canvas.width;
-          if (this.x > canvas.width) this.x = 0;
-          if (this.y < 0) this.y = canvas.height;
-          if (this.y > canvas.height) this.y = 0;
-        } else {
-          // Bounce off edges
-          if (this.x < 0 || this.x > canvas.width) this.vx *= -0.8;
-          if (this.y < 0 || this.y > canvas.height) this.vy *= -0.8;
-          this.x = Math.max(0, Math.min(canvas.width, this.x));
-          this.y = Math.max(0, Math.min(canvas.height, this.y));
-        }
-
-        // Update size based on interaction
-        if (params.sizeReaction) {
-          this.size = this.baseSize + (interactionStrength * params.sizeReactionStrength * 3);
-        } else {
-          this.size = this.baseSize;
-        }
-
-        // Update opacity based on interaction
-        if (params.opacityReaction) {
-          this.opacity = this.baseOpacity + (interactionStrength * params.opacityReactionStrength);
-          this.opacity = Math.min(1, Math.max(0, this.opacity));
-        } else {
-          this.opacity = this.baseOpacity;
-        }
-      }
-
-      draw(params) {
-        ctx.save();
-        ctx.globalAlpha = this.opacity * params.globalOpacity;
-        
-        if (params.particleShape === 'circle') {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-          ctx.fillStyle = params.particleColor;
-          ctx.fill();
-        } else if (params.particleShape === 'square') {
-          ctx.fillStyle = params.particleColor;
-          ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-        } else if (params.particleShape === 'glow') {
-          // Glowing dot effect
-          const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
-          gradient.addColorStop(0, params.particleColor);
-          gradient.addColorStop(0.5, params.particleColor.replace('1)', '0.5)'));
-          gradient.addColorStop(1, params.particleColor.replace('1)', '0)'));
-          ctx.fillStyle = gradient;
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Add color variation if enabled
-        if (params.colorVariation > 0) {
-          ctx.fillStyle = `hsla(${params.baseHue + this.hue * params.colorVariation}, ${params.saturation}%, ${params.lightness}%, ${this.opacity * params.globalOpacity})`;
-          if (params.particleShape === 'circle') {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
-          } else if (params.particleShape === 'square') {
-            ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-          }
-        }
-
-        ctx.restore();
-      }
-    }
-
-    // Initialize particles
-    let particles = [];
-    function initParticles(params) {
-      particles = [];
-      const spacing = canvas.width / params.gridDensity;
-      const rows = Math.ceil(canvas.height / spacing);
-      const cols = Math.ceil(canvas.width / spacing);
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const px = (x + 0.5) * spacing;
-          const py = (y + 0.5) * spacing;
-          particles.push(new Particle(px, py));
-        }
-      }
-    }
-
-    // Default parameters
+    // ─── Parameters ─────────────────────────────────────────────────────────
     const params = {
-      // Grid settings
-      gridDensity: 30,
-      
-      // Particle appearance
-      particleShape: 'circle',
-      particleColor: 'rgba(255, 255, 255, 1)',
-      baseHue: 0,
-      saturation: 100,
-      lightness: 100,
-      colorVariation: 0,
-      globalOpacity: 1,
-      
-      // Interaction settings
-      interactionType: 'repel',
-      interactionRadius: 150,
-      interactionStrength: 50,
-      interactionFalloff: 2,
-      sizeReaction: true,
-      sizeReactionStrength: 1,
-      opacityReaction: true,
-      opacityReactionStrength: 0.5,
-      
-      // Physics
-      damping: 0.95,
-      returnStrength: 5,
-      wrapEdges: false,
-      
-      // Background
-      backgroundColor: '#000000',
-      showGradient: true,
-      gradientTop: '#000000',
-      gradientBottom: '#000000',
-      
-      // Grid overlay
-      showGrid: true,
-      gridColor: 'rgba(255, 255, 255, 0.05)',
-      gridSize: 50,
-      
-      // Connections
-      showConnections: false,
-      connectionDistance: 100,
-      connectionOpacity: 0.2,
-      connectionColor: 'rgba(255, 255, 255, 1)',
-      
-      // Clustering
-      enableClustering: false,
-      clusterStrength: 0.5,
-      clusterRadius: 80,
-      
-      // Animation
-      animationSpeed: 1,
+      // Pixel grid
+      pixelScale:    6,       // display pixels per "dither pixel"
+
+      // Dither algorithm
+      ditherMode:    'bluenoise',  // 'ordered' | 'bluenoise' | 'voidcluster' | 'none'
+      matrixSize:    4,          // 2 | 4 | 8  (Bayer matrix)
+      threshold:     0.5,
+
+      // Luminance field (what gets dithered)
+      fieldMode:     'plasma',   // 'plasma' | 'radial' | 'noise' | 'bands'
+      speed:         0.25,
+      scale:         1.0,
+      octaves:       3,
+      contrast:      1.0,
+      bias:          0.0,
+
+      // Temporal smoothing — lerp factor per frame (0=frozen, 1=instant)
+      smoothing:     0.08,
+
+      // Cursor interaction
+      cursorRadius:  120,
+      cursorStrength: 0.6,
+      cursorMode:    'brighten', // 'brighten' | 'darken' | 'invert' | 'ripple'
+
+      // Colors
+      dotColor:      { r: 255, g: 255, b: 255 },
+      bgColor:       { r: 0,   g: 0,   b: 0   },
+
+      // Dot shape rendered per pixel-cell
+      dotShape:      'circle',   // 'circle' | 'square' | 'cross'
+      dotFill:       1.0,        // 0..1 — how much of cell to fill
     };
 
-    // Initialize particles
-    initParticles(params);
+    window.addEventListener('resize', resize);
 
-    // Setup Tweakpane
-    const pane = new Tweakpane.Pane({
-      title: 'Hero Animation Controls',
-      expanded: true,
+    // ─── Mouse ──────────────────────────────────────────────────────────────
+    let mxPx = window.innerWidth / 2, myPx = window.innerHeight / 2; // pixel coords
+    let rippleT = 0;
+
+    document.addEventListener('mousemove', e => {
+      mxPx = e.clientX;
+      myPx = e.clientY;
     });
 
-    // Grid folder
-    const gridFolder = pane.addFolder({ title: 'Grid', expanded: false });
-    gridFolder.addInput(params, 'gridDensity', { min: 10, max: 100, step: 1 })
-      .on('change', () => initParticles(params));
+    document.addEventListener('click', () => { rippleT = 0; });
 
-    // Particle appearance folder
-    const appearanceFolder = pane.addFolder({ title: 'Particle Appearance', expanded: true });
-    appearanceFolder.addInput(params, 'particleShape', {
-      options: {
-        'Circle': 'circle',
-        'Square': 'square',
-        'Glow': 'glow',
-      }
-    });
-    appearanceFolder.addInput(params, 'particleColor', { view: 'color' });
-    appearanceFolder.addInput(params, 'globalOpacity', { min: 0, max: 1, step: 0.01 });
-    
-    const colorFolder = appearanceFolder.addFolder({ title: 'Color Variation', expanded: false });
-    colorFolder.addInput(params, 'colorVariation', { min: 0, max: 360, step: 1 });
-    colorFolder.addInput(params, 'baseHue', { min: 0, max: 360, step: 1 });
-    colorFolder.addInput(params, 'saturation', { min: 0, max: 100, step: 1 });
-    colorFolder.addInput(params, 'lightness', { min: 0, max: 100, step: 1 });
-
-    // Interaction folder
-    const interactionFolder = pane.addFolder({ title: 'Cursor Interaction', expanded: true });
-    interactionFolder.addInput(params, 'interactionType', {
-      options: {
-        'Repel': 'repel',
-        'Attract': 'attract',
-        'Orbit': 'orbit',
-      }
-    });
-    interactionFolder.addInput(params, 'interactionRadius', { min: 50, max: 500, step: 10 });
-    interactionFolder.addInput(params, 'interactionStrength', { min: 0, max: 100, step: 1 });
-    interactionFolder.addInput(params, 'interactionFalloff', { min: 1, max: 5, step: 0.1 });
-    
-    const reactionFolder = interactionFolder.addFolder({ title: 'Visual Reactions', expanded: false });
-    reactionFolder.addInput(params, 'sizeReaction');
-    reactionFolder.addInput(params, 'sizeReactionStrength', { min: 0, max: 3, step: 0.1 });
-    reactionFolder.addInput(params, 'opacityReaction');
-    reactionFolder.addInput(params, 'opacityReactionStrength', { min: 0, max: 1, step: 0.01 });
-
-    // Physics folder
-    const physicsFolder = pane.addFolder({ title: 'Physics', expanded: false });
-    physicsFolder.addInput(params, 'damping', { min: 0.8, max: 1, step: 0.01 });
-    physicsFolder.addInput(params, 'returnStrength', { min: 0, max: 20, step: 0.1 });
-    physicsFolder.addInput(params, 'wrapEdges');
-
-      // Background folder
-      const bgFolder = pane.addFolder({ title: 'Background', expanded: false });
-      bgFolder.addInput(params, 'backgroundColor', { view: 'color' });
-      bgFolder.addInput(params, 'showGradient');
-      bgFolder.addInput(params, 'gradientTop', { view: 'color' });
-      bgFolder.addInput(params, 'gradientBottom', { view: 'color' });
-      
-      // Grid overlay folder
-      const gridOverlayFolder = pane.addFolder({ title: 'Grid Overlay', expanded: false });
-      gridOverlayFolder.addInput(params, 'showGrid');
-      gridOverlayFolder.addInput(params, 'gridColor', { view: 'color' });
-      gridOverlayFolder.addInput(params, 'gridSize', { min: 20, max: 200, step: 5 });
-      
-      // Connections folder
-      const connectionsFolder = pane.addFolder({ title: 'Connections', expanded: false });
-      connectionsFolder.addInput(params, 'showConnections');
-      connectionsFolder.addInput(params, 'connectionDistance', { min: 50, max: 300, step: 10 });
-      connectionsFolder.addInput(params, 'connectionOpacity', { min: 0, max: 1, step: 0.01 });
-      connectionsFolder.addInput(params, 'connectionColor', { view: 'color' });
-      
-      // Clustering folder
-      const clusteringFolder = pane.addFolder({ title: 'Clustering', expanded: false });
-      clusteringFolder.addInput(params, 'enableClustering');
-      clusteringFolder.addInput(params, 'clusterStrength', { min: 0, max: 2, step: 0.1 });
-      clusteringFolder.addInput(params, 'clusterRadius', { min: 30, max: 200, step: 10 });
-
-    // Animation folder
-    const animFolder = pane.addFolder({ title: 'Animation', expanded: false });
-    animFolder.addInput(params, 'animationSpeed', { min: 0, max: 2, step: 0.1 });
-
-    // Export code button
-    pane.addButton({ title: 'Copy Code' }).on('click', () => {
-      const code = generateCodeOutput();
-      navigator.clipboard.writeText(code).then(() => {
-        alert('Code copied to clipboard! Paste it into your site.');
-      });
-    });
-
-    // Generate code output function
-    function generateCodeOutput() {
-      const script = getAnimationScript();
-      return `<!-- Hero Animation Section -->
-<!-- Add this to your HTML where you want the hero animation -->
-<div id="hero-animation-container" style="position: relative; width: 100%; height: 100vh; overflow: hidden;">
-  <canvas id="hero-canvas" style="display: block; width: 100%; height: 100%;"></canvas>
-</div>
-
-<!-- Add this script before closing </body> tag -->
-<script>
-${script}
-${'</scr' + 'ipt>'}
-
-<!-- Add these styles to your CSS -->
-<style>
-  #hero-animation-container {
-    position: relative;
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-  }
-  
-  #hero-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-</style>`;
-    }
-
-    function getAnimationScript() {
-      // Build interaction code
-      let interactionCode = '';
-      if (params.interactionType === 'attract') {
-        interactionCode = `      const force = interactionStrength * ${params.interactionStrength} * 0.1;
-      if (distance > 0) {
-        this.x += (dx / distance) * force;
-        this.y += (dy / distance) * force;
-      }`;
-      } else if (params.interactionType === 'repel') {
-        interactionCode = `      const force = interactionStrength * ${params.interactionStrength} * 0.1;
-      if (distance > 0) {
-        this.x -= (dx / distance) * force;
-        this.y -= (dy / distance) * force;
-      }`;
-      } else if (params.interactionType === 'orbit') {
-        interactionCode = `      if (distance > 0) {
-        const angle = Math.atan2(dy, dx) + 0.1 * interactionStrength;
-        const radius = distance * (1 - interactionStrength * 0.3);
-        this.x = mouseX + Math.cos(angle) * radius;
-        this.y = mouseY + Math.sin(angle) * radius;
-      }`;
-      }
-
-      // Build boundary code
-      let boundaryCode = '';
-      if (params.wrapEdges) {
-        boundaryCode = `      if (this.x < 0) this.x = canvas.width;
-      if (this.x > canvas.width) this.x = 0;
-      if (this.y < 0) this.y = canvas.height;
-      if (this.y > canvas.height) this.y = 0;`;
-      } else {
-        boundaryCode = `      if (this.x < 0 || this.x > canvas.width) this.vx *= -0.8;
-      if (this.y < 0 || this.y > canvas.height) this.vy *= -0.8;
-      this.x = Math.max(0, Math.min(canvas.width, this.x));
-      this.y = Math.max(0, Math.min(canvas.height, this.y));`;
-      }
-
-      // Build size reaction code
-      let sizeCode = params.sizeReaction 
-        ? `      this.size = this.baseSize + (interactionStrength * ${params.sizeReactionStrength} * 3);`
-        : `      this.size = this.baseSize;`;
-
-      // Build opacity reaction code
-      let opacityCode = params.opacityReaction
-        ? `      this.opacity = Math.min(1, Math.max(0, this.baseOpacity + (interactionStrength * ${params.opacityReactionStrength})));`
-        : `      this.opacity = this.baseOpacity;`;
-
-      // Build draw code
-      let drawCode = '';
-      
-      if (params.colorVariation > 0) {
-        // Use HSL color with variation
-        const baseHue = params.baseHue;
-        const saturation = params.saturation;
-        const lightness = params.lightness;
-        const globalOpacity = params.globalOpacity;
-        
-        if (params.particleShape === 'circle') {
-          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`;
-      ctx.fill();`;
-        } else if (params.particleShape === 'square') {
-          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
-      ctx.fillStyle = \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`;
-      ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);`;
-        } else if (params.particleShape === 'glow') {
-          drawCode = `      const hue = ${baseHue} + (Math.random() * ${params.colorVariation});
-      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
-      gradient.addColorStop(0, \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity}})\`);
-      gradient.addColorStop(0.5, \`hsla(\${hue}, ${saturation}%, ${lightness}%, \${this.opacity * ${globalOpacity} * 0.5})\`);
-      gradient.addColorStop(1, \`hsla(\${hue}, ${saturation}%, ${lightness}%, 0)\`);
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
-      ctx.fill();`;
+    // ─── Bayer matrices ─────────────────────────────────────────────────────
+    const BAYER = {
+      2: [
+        [0, 2],
+        [3, 1],
+      ],
+      4: [
+        [ 0,  8,  2, 10],
+        [12,  4, 14,  6],
+        [ 3, 11,  1,  9],
+        [15,  7, 13,  5],
+      ],
+      8: (() => {
+        const b4 = [
+          [ 0,  8,  2, 10], [12,  4, 14,  6],
+          [ 3, 11,  1,  9], [15,  7, 13,  5],
+        ];
+        const m = [];
+        for (let y = 0; y < 8; y++) {
+          m[y] = [];
+          for (let x = 0; x < 8; x++) {
+            const qy = Math.floor(y / 2), qx = Math.floor(x / 2);
+            const ry = y % 2, rx = x % 2;
+            m[y][x] = b4[qy][qx] * 4 + b4[ry][rx];
+          }
         }
-      } else {
-        // Use fixed color
-        const colorStr = params.particleColor.replace(/'/g, "\\'");
-        if (params.particleShape === 'circle') {
-          drawCode = `      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = '${colorStr}';
-      ctx.fill();`;
-        } else if (params.particleShape === 'square') {
-          drawCode = `      ctx.fillStyle = '${colorStr}';
-      ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);`;
-        } else if (params.particleShape === 'glow') {
-          const color1 = colorStr;
-          const color2 = colorStr.replace(/1\)/, '0.5)');
-          const color3 = colorStr.replace(/1\)/, '0)');
-          drawCode = `      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
-      gradient.addColorStop(0, '${color1}');
-      gradient.addColorStop(0.5, '${color2}');
-      gradient.addColorStop(1, '${color3}');
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
-      ctx.fill();`;
+        return m;
+      })(),
+    };
+
+    // ─── Noise helpers (simple value noise) ─────────────────────────────────
+    function hash(n) {
+      // cheap but decent hash
+      let x = Math.sin(n) * 43758.5453123;
+      return x - Math.floor(x);
+    }
+    function noise2(x, y) {
+      const ix = Math.floor(x), iy = Math.floor(y);
+      const fx = x - ix, fy = y - iy;
+      const ux = fx * fx * (3 - 2 * fx);
+      const uy = fy * fy * (3 - 2 * fy);
+      const n00 = hash(ix     + iy     * 57.0);
+      const n10 = hash(ix + 1 + iy     * 57.0);
+      const n01 = hash(ix     + (iy+1) * 57.0);
+      const n11 = hash(ix + 1 + (iy+1) * 57.0);
+      return n00*(1-ux)*(1-uy) + n10*ux*(1-uy) + n01*(1-ux)*uy + n11*ux*uy;
+    }
+    function fbm(x, y, oct) {
+      let v = 0, a = 0.5, f = 1;
+      for (let i = 0; i < oct; i++) {
+        v += a * noise2(x * f, y * f);
+        a *= 0.5; f *= 2.1;
+      }
+      return v;
+    }
+
+    // ─── Luminance field ────────────────────────────────────────────────────
+    function sampleField(px, py, t) {
+      // px, py are pixel buffer coords; return 0..1 luminance
+      const nx = (px / PW) * params.scale;
+      const ny = (py / PH) * params.scale;
+      const speed = params.speed;
+      let v;
+
+      switch (params.fieldMode) {
+        case 'plasma':
+          v  = Math.sin(nx * 3.1 + t * speed);
+          v += Math.sin(ny * 2.7 - t * speed * 0.7);
+          v += Math.sin((nx + ny) * 2.0 + t * speed * 0.5);
+          v += Math.sin(Math.sqrt((nx - 0.5*params.scale)**2 + (ny - 0.5*params.scale)**2) * 4);
+          v = (v + 4) / 8;
+          break;
+
+        case 'radial': {
+          const cx = params.scale * 0.5;
+          const cy = params.scale * 0.5;
+          const r = Math.sqrt((nx - cx)**2 + (ny - cy)**2);
+          v = 0.5 + 0.5 * Math.sin(r * 5 - t * speed);
+          break;
         }
+
+        case 'noise':
+          v = fbm(nx + t * speed * 0.3, ny + t * speed * 0.2, params.octaves);
+          break;
+
+        case 'bands':
+          v = 0.5 + 0.5 * Math.sin(nx * 4 + t * speed + Math.sin(ny * 2 + t * speed * 0.5) * 2);
+          break;
+
+        default:
+          v = 0.5;
       }
 
-      // Build clustering code (applied in main loop, not in particle update)
-      let clusteringCode = '';
-      if (params.enableClustering) {
-        clusteringCode = `
-    // Apply clustering after all particles are updated
-    particles.forEach(particle => {
-      particles.forEach(other => {
-        if (other === particle) return;
-        const odx = other.x - particle.x;
-        const ody = other.y - particle.y;
-        const odistance = Math.sqrt(odx * odx + ody * ody);
-        
-        if (odistance < ${params.clusterRadius} && odistance > 0) {
-          const clusterForce = (1 - odistance / ${params.clusterRadius}) * ${params.clusterStrength} * 0.05;
-          particle.x += (odx / odistance) * clusterForce;
-          particle.y += (ody / odistance) * clusterForce;
+      // contrast + bias
+      v = (v - 0.5) * params.contrast + 0.5 + params.bias;
+      return Math.max(0, Math.min(1, v));
+    }
+
+    // ─── Cursor influence ───────────────────────────────────────────────────
+    function cursorInfluence(px, py, t, v) {
+      const sx = px / PW * W;
+      const sy = py / PH * H;
+      const dx = sx - mxPx;
+      const dy = sy - myPx;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const r = params.cursorRadius;
+      if (dist >= r) return v;
+
+      const strength = (1 - dist / r) ** 2 * params.cursorStrength;
+
+      switch (params.cursorMode) {
+        case 'brighten': return Math.min(1, v + strength);
+        case 'darken':   return Math.max(0, v - strength);
+        case 'invert':   return v + (1 - 2*v) * strength;
+        case 'ripple': {
+          const wave = Math.sin(dist * 0.2 - t * 4) * 0.5 + 0.5;
+          return Math.max(0, Math.min(1, v + (wave - 0.5) * strength));
         }
-      });
-    });`;
+        default: return v;
       }
-
-      // Build gradient code
-      let gradientCode = '';
-      if (params.showGradient) {
-        gradientCode = `    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '${params.gradientTop}');
-    gradient.addColorStop(1, '${params.gradientBottom}');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);`;
-      }
-      
-      // Build grid drawing code
-      let gridCode = '';
-      if (params.showGrid) {
-        gridCode = `
-  function drawGrid() {
-    ctx.strokeStyle = '${params.gridColor}';
-    ctx.lineWidth = 1;
-    
-    const gridSize = ${params.gridSize};
-    const offsetX = (mouseX % gridSize) - gridSize;
-    const offsetY = (mouseY % gridSize) - gridSize;
-    
-    // Vertical lines
-    for (let x = offsetX; x < canvas.width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    
-    // Horizontal lines
-    for (let y = offsetY; y < canvas.height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-  }`;
-      }
-      
-      // Build connection drawing code
-      let connectionCode = '';
-      if (params.showConnections) {
-        connectionCode = `
-  function drawConnections() {
-    ctx.strokeStyle = '${params.connectionColor}';
-    
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const p1 = particles[i];
-        const p2 = particles[j];
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < ${params.connectionDistance}) {
-          const opacity = (1 - distance / ${params.connectionDistance}) * ${params.connectionOpacity} * p1.opacity * p2.opacity;
-          ctx.globalAlpha = opacity;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      }
-    }
-    
-    ctx.globalAlpha = 1;
-  }`;
-      }
-
-      return `// Hero Animation Script
-(function() {
-  const canvas = document.getElementById('hero-canvas');
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  
-  function resizeCanvas() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  
-  let mouseX = canvas.width / 2;
-  let mouseY = canvas.height / 2;
-  let targetMouseX = mouseX;
-  let targetMouseY = mouseY;
-  
-  document.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    targetMouseX = e.clientX - rect.left;
-    targetMouseY = e.clientY - rect.top;
-  });
-  
-  function updateMouse() {
-    mouseX += (targetMouseX - mouseX) * 0.1;
-    mouseY += (targetMouseY - mouseY) * 0.1;
-  }
-  
-  class Particle {
-    constructor(x, y) {
-      this.baseX = x;
-      this.baseY = y;
-      this.x = x;
-      this.y = y;
-      this.size = Math.random() * 2 + 1;
-      this.baseSize = this.size;
-      this.vx = (Math.random() - 0.5) * 0.5;
-      this.vy = (Math.random() - 0.5) * 0.5;
-      this.opacity = Math.random() * 0.5 + 0.2;
-      this.baseOpacity = this.opacity;
-    }
-    
-    update() {
-      const dx = mouseX - this.x;
-      const dy = mouseY - this.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const maxDistance = ${params.interactionRadius};
-      
-      let interactionStrength = 0;
-      if (distance < maxDistance) {
-        interactionStrength = 1 - (distance / maxDistance);
-        interactionStrength = Math.pow(interactionStrength, ${params.interactionFalloff});
-      }
-      
-${interactionCode}
-      
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vx *= ${params.damping};
-      this.vy *= ${params.damping};
-      
-      const returnForce = ${params.returnStrength} * 0.01;
-      this.x += (this.baseX - this.x) * returnForce;
-      this.y += (this.baseY - this.y) * returnForce;
-      
-${boundaryCode}
-      
-${sizeCode}
-${opacityCode}
-    }
-    
-    draw() {
-      ctx.save();
-      ctx.globalAlpha = this.opacity * ${params.globalOpacity};
-${drawCode}
-      ctx.restore();
-    }
-  }
-  
-  let particles = [];
-  function initParticles() {
-    particles = [];
-    const spacing = canvas.width / ${params.gridDensity};
-    const rows = Math.ceil(canvas.height / spacing);
-    const cols = Math.ceil(canvas.width / spacing);
-    
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        particles.push(new Particle((x + 0.5) * spacing, (y + 0.5) * spacing));
-      }
-    }
-  }
-  
-  initParticles();
-  
-${gridCode}${connectionCode}
-  
-  function animate() {
-    updateMouse();
-    
-    ctx.fillStyle = '${params.backgroundColor}';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-${gradientCode}
-    
-${params.showGrid ? '    drawGrid();' : ''}
-    
-    particles.forEach(p => {
-      p.update();
-    });
-    
-${clusteringCode}
-    
-${params.showConnections ? '    drawConnections();' : ''}
-    
-    particles.forEach(p => {
-      p.draw();
-    });
-    
-    requestAnimationFrame(animate);
-  }
-  
-  animate();
-})();`;
     }
 
-    // Draw grid overlay
-    function drawGrid() {
-      if (!params.showGrid) return;
-      
-      ctx.strokeStyle = params.gridColor;
-      ctx.lineWidth = 1;
-      
-      const gridSize = params.gridSize;
-      const offsetX = (mouseX % gridSize) - gridSize;
-      const offsetY = (mouseY % gridSize) - gridSize;
-      
-      // Vertical lines
-      for (let x = offsetX; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      
-      // Horizontal lines
-      for (let y = offsetY; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    }
-    
-    // Draw connections between nearby particles
-    function drawConnections() {
-      if (!params.showConnections) return;
-      
-      ctx.strokeStyle = params.connectionColor;
-      
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const p1 = particles[i];
-          const p2 = particles[j];
-          const dx = p2.x - p1.x;
-          const dy = p2.y - p1.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          if (distance < params.connectionDistance) {
-            const opacity = (1 - distance / params.connectionDistance) * params.connectionOpacity * p1.opacity * p2.opacity;
-            ctx.globalAlpha = opacity;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+    // ─── Blue noise texture (64×64, void-and-cluster approximation) ─────────
+    // Generated via a seeded, iterative void-and-cluster algorithm offline.
+    // Using it as a spatially well-distributed, aperiodic threshold mask gives
+    // far better temporal stability than scan-line error diffusion.
+    const BN_SIZE = 64;
+    const blueNoise = (() => {
+      // Approximate blue noise via a multi-pass rank shuffle of white noise
+      // seeded deterministically — good enough for animation dithering.
+      const N = BN_SIZE * BN_SIZE;
+      const arr = new Float32Array(N);
+
+      // Seed with low-discrepancy white noise
+      let s = 1234567;
+      function rng() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 1) / 0x7fffffff; }
+      for (let i = 0; i < N; i++) arr[i] = rng();
+
+      // Three rounds of Gaussian-filtered rank sort (void-and-cluster approximation)
+      const sigma = 1.9;
+      const kR    = Math.ceil(sigma * 3);
+      const tmp   = new Float32Array(N);
+
+      function gaussBlur(src, dst) {
+        const W = BN_SIZE, H = BN_SIZE;
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            let sum = 0, w = 0;
+            for (let dy = -kR; dy <= kR; dy++) {
+              for (let dx = -kR; dx <= kR; dx++) {
+                const g = Math.exp(-(dx*dx + dy*dy) / (2 * sigma * sigma));
+                const nx = (x + dx + W) % W;
+                const ny = (y + dy + H) % H;
+                sum += src[ny * W + nx] * g;
+                w   += g;
+              }
+            }
+            dst[y * W + x] = sum / w;
           }
         }
       }
-      
-      ctx.globalAlpha = 1;
-    }
-    
-    // Animation loop
-    function animate() {
-      updateMouse();
-      
-      // Clear canvas
-      if (params.showGradient) {
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, params.gradientTop);
-        gradient.addColorStop(1, params.gradientBottom);
-        ctx.fillStyle = gradient;
-      } else {
-        ctx.fillStyle = params.backgroundColor;
+
+      // Rank-based void-and-cluster: 3 passes
+      for (let pass = 0; pass < 3; pass++) {
+        gaussBlur(arr, tmp);
+        // Build rank order from blurred image
+        const idx = Array.from({length: N}, (_, i) => i);
+        idx.sort((a, b) => tmp[a] - tmp[b]);
+        // Assign rank-normalized values back
+        for (let i = 0; i < N; i++) arr[idx[i]] = (i + 0.5) / N;
       }
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw grid overlay
-      drawGrid();
-      
-      // Update particles
-      particles.forEach(particle => {
-        particle.update(params);
-      });
-      
-      // Apply clustering after all particles are updated
-      if (params.enableClustering) {
-        particles.forEach(particle => {
-          particles.forEach(other => {
-            if (other === particle) return;
-            const odx = other.x - particle.x;
-            const ody = other.y - particle.y;
-            const odistance = Math.sqrt(odx * odx + ody * ody);
-            
-            if (odistance < params.clusterRadius && odistance > 0) {
-              const clusterForce = (1 - odistance / params.clusterRadius) * params.clusterStrength * 0.05;
-              particle.x += (odx / odistance) * clusterForce;
-              particle.y += (ody / odistance) * clusterForce;
-            }
-          });
-        });
+
+      return arr; // values in [0,1], blue-noise distributed
+    })();
+
+    // ─── Dithering ──────────────────────────────────────────────────────────
+
+    function buildLuminanceBuffer(t) {
+      const lum = new Float32Array(PW * PH);
+      for (let py = 0; py < PH; py++) {
+        for (let px = 0; px < PW; px++) {
+          let v = sampleField(px, py, t);
+          v = cursorInfluence(px, py, t, v);
+          lum[py * PW + px] = v;
+        }
       }
-      
-      // Draw connections
-      drawConnections();
-      
-      // Draw particles
-      particles.forEach(particle => {
-        particle.draw(params);
-      });
-      
-      requestAnimationFrame(animate);
+      return lum;
     }
 
-    // Start animation
-    animate();
-    }); // end DOMContentLoaded
+    function applyOrderedDither(lum) {
+      const out = new Uint8Array(PW * PH);
+      const mat = BAYER[params.matrixSize] || BAYER[4];
+      const mSize = mat.length;
+      const mMax  = mSize * mSize;
+      for (let py = 0; py < PH; py++) {
+        for (let px = 0; px < PW; px++) {
+          const threshold = (mat[py % mSize][px % mSize] + 0.5) / mMax;
+          out[py * PW + px] = lum[py * PW + px] > threshold ? 1 : 0;
+        }
+      }
+      return out;
+    }
+
+    function applyBlueNoise(lum) {
+      // Spatially stable, temporally smooth — threshold against blue noise texture.
+      // Tiling the BN_SIZE×BN_SIZE texture over the pixel buffer.
+      const out = new Uint8Array(PW * PH);
+      for (let py = 0; py < PH; py++) {
+        for (let px = 0; px < PW; px++) {
+          const bx = px % BN_SIZE;
+          const by = py % BN_SIZE;
+          const threshold = blueNoise[by * BN_SIZE + bx];
+          out[py * PW + px] = lum[py * PW + px] > threshold ? 1 : 0;
+        }
+      }
+      return out;
+    }
+
+    function applyVoidCluster(lum) {
+      // Blue noise with a slow per-frame phase rotation — the texture tiles
+      // shift by a small amount each frame, giving a gentle animated texture
+      // rather than a locked halftone grid, while staying temporally stable.
+      const out  = new Uint8Array(PW * PH);
+      const phase = (Date.now() * 0.00003) % 1; // very slow drift
+      for (let py = 0; py < PH; py++) {
+        for (let px = 0; px < PW; px++) {
+          const bx = px % BN_SIZE;
+          const by = py % BN_SIZE;
+          // Rotate threshold by phase (wraps within [0,1])
+          let threshold = (blueNoise[by * BN_SIZE + bx] + phase) % 1;
+          out[py * PW + px] = lum[py * PW + px] > threshold ? 1 : 0;
+        }
+      }
+      return out;
+    }
+
+    function applyNone(lum) {
+      const out = new Uint8Array(PW * PH);
+      for (let i = 0; i < lum.length; i++) {
+        out[i] = lum[i] > params.threshold ? 1 : 0;
+      }
+      return out;
+    }
+
+    // ─── Dot renderer ───────────────────────────────────────────────────────
+    // We draw dot shapes directly onto the offscreen canvas using ctx calls
+    // after scaling — this gives crisp anti-aliased dots at display resolution.
+
+    function renderDots(out) {
+      const scale = params.pixelScale;
+      const { r: br, g: bg, b: bb } = params.bgColor;
+      const { r: dr, g: dg, b: db } = params.dotColor;
+
+      ctx.fillStyle = `rgb(${br},${bg},${bb})`;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = `rgb(${dr},${dg},${db})`;
+
+      const half   = scale * 0.5;
+      const radius = half * params.dotFill;
+      const PI2    = Math.PI * 2;
+
+      if (params.dotShape === 'circle') {
+        // Batch all circles into one path for performance
+        ctx.beginPath();
+        for (let py = 0; py < PH; py++) {
+          for (let px = 0; px < PW; px++) {
+            if (!out[py * PW + px]) continue;
+            ctx.moveTo(px * scale + half + radius, py * scale + half);
+            ctx.arc(px * scale + half, py * scale + half, radius, 0, PI2);
+          }
+        }
+        ctx.fill('evenodd');
+      } else {
+        for (let py = 0; py < PH; py++) {
+          for (let px = 0; px < PW; px++) {
+            if (!out[py * PW + px]) continue;
+            const cx = px * scale + half;
+            const cy = py * scale + half;
+            if (params.dotShape === 'square') {
+              ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+            } else {
+              // cross
+              const arm = radius * 0.38;
+              ctx.fillRect(cx - arm,    cy - radius, arm * 2,    radius * 2);
+              ctx.fillRect(cx - radius, cy - arm,    radius * 2, arm * 2);
+            }
+          }
+        }
+      }
+    }
+
+    // ─── Main render loop ────────────────────────────────────────────────────
+    let t = 0;
+    let lastPixelScale = params.pixelScale;
+    let smoothedLum = null; // temporally smoothed luminance buffer
+
+    function frame(ts) {
+      t = ts * 0.001;
+      rippleT = Math.min(rippleT + 0.016, 100);
+
+      // Rebuild buffers if scale changed
+      if (params.pixelScale !== lastPixelScale) {
+        lastPixelScale = params.pixelScale;
+        smoothedLum = null;
+        resize();
+      }
+
+      const rawLum = buildLuminanceBuffer(t);
+
+      // Temporal smoothing: lerp the previous smoothed buffer toward this frame
+      if (!smoothedLum || smoothedLum.length !== rawLum.length) {
+        smoothedLum = rawLum.slice();
+      } else {
+        const alpha = params.smoothing;
+        for (let i = 0; i < rawLum.length; i++) {
+          smoothedLum[i] += (rawLum[i] - smoothedLum[i]) * alpha;
+        }
+      }
+
+      const lum = smoothedLum;
+
+      let out;
+      switch (params.ditherMode) {
+        case 'ordered':     out = applyOrderedDither(lum); break;
+        case 'bluenoise':   out = applyBlueNoise(lum);     break;
+        case 'voidcluster': out = applyVoidCluster(lum);   break;
+        default:            out = applyNone(lum);           break;
+      }
+
+      // Render dots directly to the display canvas at full resolution
+      renderDots(out);
+
+      requestAnimationFrame(frame);
+    }
+
+    // ─── Tweakpane UI ────────────────────────────────────────────────────────
+    const pane = new Tweakpane.Pane({ title: 'Dither Shader', expanded: true });
+
+    // ── Pixel Grid ──
+    const gridF = pane.addFolder({ title: 'Pixel Grid', expanded: true });
+    gridF.addInput(params, 'pixelScale', {
+      label: 'pixel scale', min: 2, max: 20, step: 1
+    }).on('change', resize);
+
+    // ── Dithering ──
+    const ditherF = pane.addFolder({ title: 'Dithering', expanded: true });
+    ditherF.addInput(params, 'ditherMode', {
+      label: 'algorithm',
+      options: { 'Blue Noise': 'bluenoise', 'Void & Cluster': 'voidcluster', 'Ordered (Bayer)': 'ordered', 'Threshold': 'none' },
+    });
+    ditherF.addInput(params, 'matrixSize', {
+      label: 'Bayer size',
+      options: { '2×2': 2, '4×4': 4, '8×8': 8 },
+    });
+    ditherF.addInput(params, 'threshold', { label: 'threshold', min: 0, max: 1, step: 0.01 });
+
+    // ── Luminance Field ──
+    const fieldF = pane.addFolder({ title: 'Luminance Field', expanded: true });
+    fieldF.addInput(params, 'fieldMode', {
+      label: 'mode',
+      options: { 'Plasma': 'plasma', 'Radial': 'radial', 'Noise (FBM)': 'noise', 'Bands': 'bands' },
+    });
+    fieldF.addInput(params, 'speed',     { min: 0, max: 3,  step: 0.01 });
+    fieldF.addInput(params, 'scale',     { min: 0.1, max: 5, step: 0.05 });
+    fieldF.addInput(params, 'octaves',   { min: 1, max: 6, step: 1 });
+    fieldF.addInput(params, 'contrast',  { min: 0.1, max: 4, step: 0.05 });
+    fieldF.addInput(params, 'bias',      { min: -0.5, max: 0.5, step: 0.01 });
+    fieldF.addInput(params, 'smoothing', { label: 'smoothing', min: 0.01, max: 1, step: 0.01 });
+
+    // ── Cursor ──
+    const cursorF = pane.addFolder({ title: 'Cursor Interaction', expanded: true });
+    cursorF.addInput(params, 'cursorMode', {
+      label: 'mode',
+      options: { 'Brighten': 'brighten', 'Darken': 'darken', 'Invert': 'invert', 'Ripple': 'ripple' },
+    });
+    cursorF.addInput(params, 'cursorRadius',   { label: 'radius',   min: 20, max: 400, step: 5 });
+    cursorF.addInput(params, 'cursorStrength', { label: 'strength', min: 0,  max: 1,   step: 0.01 });
+
+    // ── Dot Shape ──
+    const dotF = pane.addFolder({ title: 'Dot Shape', expanded: false });
+    dotF.addInput(params, 'dotShape', {
+      label: 'shape',
+      options: { 'Circle': 'circle', 'Square': 'square', 'Cross': 'cross' },
+    });
+    dotF.addInput(params, 'dotFill', { label: 'fill', min: 0.1, max: 1, step: 0.01 });
+
+    // ── Colors ──
+    const colorF = pane.addFolder({ title: 'Colors', expanded: false });
+    colorF.addInput(params, 'dotColor', { label: 'dot' });
+    colorF.addInput(params, 'bgColor',  { label: 'background' });
+
+    // ─── Init & start ────────────────────────────────────────────────────────
+    resize();
+    requestAnimationFrame(frame);
+
+  }); // DOMContentLoaded
   </script>
 </body>
 </html>
